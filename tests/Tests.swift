@@ -248,6 +248,63 @@ click(CGPoint(x: 200, y: 320))
 canvas.commitTextEditing()
 check("Leerer Text wird verworfen", canvas.doc.annotations.count == countBeforeEmpty)
 
+// -- Werkzeugleiste folgt der Auswahl ----------------------------------
+canvas.tool = .select
+canvas.doc.annotations.removeAll()
+
+let styled = RectAnnotation()
+styled.color = kritzelPalette[4]          // blau
+styled.lineWidth = 13
+styled.p0 = CGPoint(x: 80, y: 80); styled.p1 = CGPoint(x: 260, y: 220)
+canvas.doc.annotations.append(styled)
+
+let styledText = TextAnnotation()
+styledText.color = kritzelPalette[3]      // gruen
+styledText.fontSize = 44
+styledText.text = "Notiz"
+styledText.origin = CGPoint(x: 320, y: 300)
+canvas.doc.annotations.append(styledText)
+
+// Start from values that differ from both objects.
+canvas.color = kritzelPalette[0]
+canvas.lineWidth = 5
+canvas.fontSize = 32
+
+click(CGPoint(x: 80, y: 150))
+check("Auswahl setzt die Strichstärke", abs(canvas.lineWidth - 13) < 0.01)
+check("Auswahl setzt die Farbe", sameColor(canvas.color, kritzelPalette[4]))
+var state = controller.debugControlState()
+check("Slider zeigt die Stärke des Objekts", abs(state.width - 13) < 0.01)
+check("Farbfeld zeigt die Farbe des Objekts", state.colorIndex == 4)
+
+// Changing one control must not touch the other properties.
+canvas.color = kritzelPalette[6]
+check("Farbwechsel färbt das Objekt um", sameColor(styled.color, kritzelPalette[6]))
+check("Farbwechsel lässt die Stärke in Ruhe", abs(styled.lineWidth - 13) < 0.01)
+canvas.lineWidth = 3
+check("Stärkewechsel wirkt auf das Objekt", abs(styled.lineWidth - 3) < 0.01)
+check("Stärkewechsel lässt die Farbe in Ruhe", sameColor(styled.color, kritzelPalette[6]))
+
+// Text objects bring their own size along.
+click(CGPoint(x: 340, y: 310))
+check("Auswahl setzt die Textgröße", abs(canvas.fontSize - 44) < 0.01)
+state = controller.debugControlState()
+check("Menü zeigt die Textgröße des Objekts", state.fontSize == 44)
+
+// A size the menu does not list gets its own entry rather than showing a wrong one.
+styledText.fontSize = 37
+canvas.deleteSelection(nil)
+canvas.undoAction(nil)
+if let restored = canvas.doc.annotations.compactMap({ $0 as? TextAnnotation }).first {
+    click(CGPoint(x: restored.origin.x + 20, y: restored.origin.y + 10))
+    state = controller.debugControlState()
+    check("Krumme Textgröße wird angezeigt (\(state.fontSize) pt)", state.fontSize == 37)
+}
+
+// Deselecting leaves the controls where they are, ready for the next object.
+click(CGPoint(x: 560, y: 380))
+check("Klick ins Leere hebt die Auswahl auf", canvas.selectedAnnotation == nil)
+
 // -- Zuschneiden --------------------------------------------------------
 func cropIs(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, tolerance: CGFloat = 1.5) -> Bool {
     guard let r = canvas.cropRect else { return false }

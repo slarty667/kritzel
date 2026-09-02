@@ -41,14 +41,27 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
             needsDisplay = true
         }
     }
-    var color: NSColor = .systemRed { didSet { applyStyleToSelection() } }
-    var lineWidth: CGFloat = 5 { didSet { applyStyleToSelection() } }
-    var fontSize: CGFloat = 32 { didSet { applyStyleToSelection() } }
+    var color: NSColor = .systemRed {
+        didSet { pushToSelection { $0.color = self.color } }
+    }
+    var lineWidth: CGFloat = 5 {
+        didSet { pushToSelection { $0.lineWidth = self.lineWidth } }
+    }
+    var fontSize: CGFloat = 32 {
+        didSet { pushToSelection { ($0 as? TextAnnotation)?.fontSize = self.fontSize } }
+    }
+    /// True while the controls are being read from the selection, so that
+    /// updating them does not write straight back into the object.
+    private var isSyncingControls = false
 
     var onDocumentChanged: (() -> Void)?
     var onToolChanged: ((ToolKind) -> Void)?
+    /// Fires when the selection changes so the toolbar can show that object's style.
+    var onSelectionChanged: ((Annotation?) -> Void)?
 
-    private var selectedIndex: Int?
+    private var selectedIndex: Int? {
+        didSet { if selectedIndex != oldValue { syncControlsFromSelection() } }
+    }
     private var draft: Annotation?
     private var dragMode: DragMode = .none
     private var dragOrigin: CGPoint = .zero
@@ -352,6 +365,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
 
     private func finishEdit() {
         clampCropToImage()
+        syncControlsFromSelection()
         needsDisplay = true
         onDocumentChanged?()
     }
@@ -382,13 +396,24 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         return nil
     }
 
-    private func applyStyleToSelection() {
-        guard let i = selectedIndex, i < doc.annotations.count else { needsDisplay = true; return }
-        let a = doc.annotations[i]
-        a.color = color
-        a.lineWidth = lineWidth
-        if let t = a as? TextAnnotation { t.fontSize = fontSize }
+    /// Writes one style property into the selected object. Only the property that
+    /// actually changed, so picking a colour does not also reset the line width.
+    private func pushToSelection(_ apply: (Annotation) -> Void) {
+        guard !isSyncingControls, let a = selectedAnnotation else { needsDisplay = true; return }
+        apply(a)
         needsDisplay = true
+    }
+
+    /// Reads the selected object's style back into the controls.
+    private func syncControlsFromSelection() {
+        isSyncingControls = true
+        if let a = selectedAnnotation {
+            color = a.color
+            lineWidth = a.lineWidth
+            if let t = a as? TextAnnotation { fontSize = t.fontSize }
+        }
+        isSyncingControls = false
+        onSelectionChanged?(selectedAnnotation)
     }
 
     var selectedAnnotation: Annotation? {
@@ -430,7 +455,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
                 }
                 pushUndo()
                 dragMode = .move
-                color = doc.annotations[idx].color
             } else {
                 selectedIndex = nil
                 dragMode = .none

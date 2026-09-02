@@ -11,6 +11,15 @@ let kritzelPalette: [NSColor] = [
     NSColor.white
 ]
 
+/// Palette colours are compared by value, not by identity: an annotation carries
+/// a copy, and a cloned one may not be the same object any more.
+func sameColor(_ a: NSColor, _ b: NSColor) -> Bool {
+    guard let x = a.usingColorSpace(.sRGB), let y = b.usingColorSpace(.sRGB) else { return false }
+    return abs(x.redComponent - y.redComponent) < 0.02
+        && abs(x.greenComponent - y.greenComponent) < 0.02
+        && abs(x.blueComponent - y.blueComponent) < 0.02
+}
+
 func colorSwatch(_ color: NSColor, size: CGFloat = 15) -> NSImage {
     let img = NSImage(size: NSSize(width: size, height: size))
     img.lockFocus()
@@ -56,6 +65,7 @@ final class EditorController: NSWindowController {
         canvas.onToolChanged = { [weak self] t in self?.toolSegments.selectedSegment = t.rawValue }
         canvas.onOpenImage = { img, name in AppState.shared.newWindow(image: img, name: name) }
         canvas.onCropChanged = { [weak self] rect in self?.cropFrameChanged(rect) }
+        canvas.onSelectionChanged = { [weak self] a in self?.showStyle(of: a) }
         window.center()
     }
 
@@ -244,6 +254,45 @@ final class EditorController: NSWindowController {
         let dims = "\(Int(canvas.doc.size.width)) × \(Int(canvas.doc.size.height))"
         let name = canvas.doc.sourceName ?? "Ohne Titel"
         window?.title = "Kritzel — \(name)  ·  \(dims)"
+    }
+
+    // MARK: - Keeping the controls in step with the selection
+
+    /// Selecting an object puts its own colour, width and text size into the toolbar.
+    private func showStyle(of annotation: Annotation?) {
+        guard let a = annotation else { return }
+        if let i = kritzelPalette.firstIndex(where: { sameColor($0, a.color) }) {
+            colorSegments.selectedSegment = i
+        }
+        widthSlider.doubleValue = Double(min(max(a.lineWidth, CGFloat(widthSlider.minValue)),
+                                             CGFloat(widthSlider.maxValue)))
+        if let text = a as? TextAnnotation { showFontSize(text.fontSize) }
+    }
+
+    /// Text objects scaled by their handle end up at sizes the menu does not list,
+    /// so an entry for the actual value is added on the fly.
+    private func showFontSize(_ size: CGFloat) {
+        let value = max(1, Int(size.rounded()))
+        if let existing = fontPopup.itemArray.first(where: {
+               $0.tag == value && $0.representedObject as? String != "custom" }) {
+            fontPopup.select(existing)
+            return
+        }
+        if let index = fontPopup.itemArray.firstIndex(where: { $0.representedObject as? String == "custom" }) {
+            fontPopup.removeItem(at: index)
+        }
+        fontPopup.insertItem(withTitle: "\(value) pt", at: 0)
+        if let item = fontPopup.item(at: 0) {
+            item.tag = value
+            item.representedObject = "custom"
+        }
+        fontPopup.selectItem(at: 0)
+    }
+
+    /// Reads back what the controls currently show, for tests.
+    func debugControlState() -> (colorIndex: Int, width: Double, fontSize: Int) {
+        return (colorSegments.selectedSegment, widthSlider.doubleValue,
+                fontPopup.selectedItem?.tag ?? 0)
     }
 
     // MARK: - Toolbar actions

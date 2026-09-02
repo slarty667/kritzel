@@ -299,7 +299,23 @@ if let restored = canvas.doc.annotations.compactMap({ $0 as? TextAnnotation }).f
     click(CGPoint(x: restored.origin.x + 20, y: restored.origin.y + 10))
     state = controller.debugControlState()
     check("Krumme Textgröße wird angezeigt (\(state.fontSize) pt)", state.fontSize == 37)
+    check("Text ausgewählt: nur Textgröße", state.fontEnabled && !state.widthEnabled)
 }
+
+// Only the control that applies stays live, so the two cannot be confused.
+canvas.tool = .text
+state = controller.debugControlState()
+check("Textwerkzeug: Textgröße aktiv, Stärke aus", state.fontEnabled && !state.widthEnabled)
+canvas.tool = .arrow
+state = controller.debugControlState()
+check("Pfeilwerkzeug: Stärke aktiv, Textgröße aus", state.widthEnabled && !state.fontEnabled)
+canvas.tool = .pixelate
+state = controller.debugControlState()
+check("Verpixeln: beides aus", !state.widthEnabled && !state.fontEnabled)
+canvas.tool = .select
+click(CGPoint(x: 80, y: 150))
+state = controller.debugControlState()
+check("Rechteck ausgewählt: nur Stärke", state.widthEnabled && !state.fontEnabled)
 
 // Deselecting leaves the controls where they are, ready for the next object.
 click(CGPoint(x: 560, y: 380))

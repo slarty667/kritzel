@@ -47,6 +47,9 @@ final class EditorController: NSWindowController {
     private var cropBar: NSVisualEffectView!
     private var cropWidthField: NSTextField!
     private var cropHeightField: NSTextField!
+    private var widthLabel: NSTextField!
+    private var widthValueLabel: NSTextField!
+    private var fontLabel: NSTextField!
     private let barHeight: CGFloat = 44
     private let cropBarHeight: CGFloat = 38
 
@@ -62,10 +65,16 @@ final class EditorController: NSWindowController {
         buildInterface()
         updateTitle()
         canvas.onDocumentChanged = { [weak self] in self?.updateTitle() }
-        canvas.onToolChanged = { [weak self] t in self?.toolSegments.selectedSegment = t.rawValue }
+        canvas.onToolChanged = { [weak self] t in
+            self?.toolSegments.selectedSegment = t.rawValue
+            self?.updateControlAvailability()
+        }
         canvas.onOpenImage = { img, name in AppState.shared.newWindow(image: img, name: name) }
         canvas.onCropChanged = { [weak self] rect in self?.cropFrameChanged(rect) }
-        canvas.onSelectionChanged = { [weak self] a in self?.showStyle(of: a) }
+        canvas.onSelectionChanged = { [weak self] a in
+            self?.showStyle(of: a)
+            self?.updateControlAvailability()
+        }
         window.center()
     }
 
@@ -126,9 +135,19 @@ final class EditorController: NSWindowController {
         fontPopup.action = #selector(fontSizeChanged(_:))
         fontPopup.toolTip = "Textgröße"
 
-        let widthLabel = NSTextField(labelWithString: "Stärke")
+        widthLabel = NSTextField(labelWithString: "Stärke")
         widthLabel.font = NSFont.systemFont(ofSize: 11)
         widthLabel.textColor = .secondaryLabelColor
+
+        widthValueLabel = NSTextField(labelWithString: "5")
+        widthValueLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        widthValueLabel.textColor = .secondaryLabelColor
+        widthValueLabel.alignment = .right
+        widthValueLabel.widthAnchor.constraint(equalToConstant: 18).isActive = true
+
+        fontLabel = NSTextField(labelWithString: "Text")
+        fontLabel.font = NSFont.systemFont(ofSize: 11)
+        fontLabel.textColor = .secondaryLabelColor
 
         let copyButton = NSButton(title: "Kopieren", target: canvas,
                                   action: #selector(CanvasView.copyImageToPasteboard(_:)))
@@ -141,8 +160,9 @@ final class EditorController: NSWindowController {
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        let stack = NSStackView(views: [toolSegments, colorSegments, widthLabel, widthSlider,
-                                        fontPopup, spacer, copyButton, saveButton])
+        let stack = NSStackView(views: [toolSegments, colorSegments,
+                                        widthLabel, widthSlider, widthValueLabel,
+                                        fontLabel, fontPopup, spacer, copyButton, saveButton])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 9
@@ -156,6 +176,7 @@ final class EditorController: NSWindowController {
         ])
 
         buildCropBar()
+        updateControlAvailability()
 
         content.addSubview(canvas)
         content.addSubview(bar)
@@ -258,6 +279,29 @@ final class EditorController: NSWindowController {
 
     // MARK: - Keeping the controls in step with the selection
 
+    /// Greys out whatever does not apply right now, so that "Stärke" and "Text"
+    /// cannot be mistaken for two controls doing the same job.
+    private func updateControlAvailability() {
+        let usesWidth: Bool
+        let usesFontSize: Bool
+        if let selection = canvas.selectedAnnotation {
+            usesFontSize = selection is TextAnnotation
+            usesWidth = !(selection is TextAnnotation) && !(selection is PixelateAnnotation)
+        } else {
+            switch canvas.tool {
+            case .text:     usesWidth = false; usesFontSize = true
+            case .pixelate, .crop: usesWidth = false; usesFontSize = false
+            case .select:   usesWidth = true;  usesFontSize = true
+            default:        usesWidth = true;  usesFontSize = false
+            }
+        }
+        widthSlider.isEnabled = usesWidth
+        fontPopup.isEnabled = usesFontSize
+        widthLabel.alphaValue = usesWidth ? 1 : 0.35
+        widthValueLabel.alphaValue = usesWidth ? 1 : 0.35
+        fontLabel.alphaValue = usesFontSize ? 1 : 0.35
+    }
+
     /// Selecting an object puts its own colour, width and text size into the toolbar.
     private func showStyle(of annotation: Annotation?) {
         guard let a = annotation else { return }
@@ -266,6 +310,7 @@ final class EditorController: NSWindowController {
         }
         widthSlider.doubleValue = Double(min(max(a.lineWidth, CGFloat(widthSlider.minValue)),
                                              CGFloat(widthSlider.maxValue)))
+        widthValueLabel.stringValue = String(Int(a.lineWidth.rounded()))
         if let text = a as? TextAnnotation { showFontSize(text.fontSize) }
     }
 
@@ -290,9 +335,10 @@ final class EditorController: NSWindowController {
     }
 
     /// Reads back what the controls currently show, for tests.
-    func debugControlState() -> (colorIndex: Int, width: Double, fontSize: Int) {
+    func debugControlState() -> (colorIndex: Int, width: Double, fontSize: Int,
+                                 widthEnabled: Bool, fontEnabled: Bool) {
         return (colorSegments.selectedSegment, widthSlider.doubleValue,
-                fontPopup.selectedItem?.tag ?? 0)
+                fontPopup.selectedItem?.tag ?? 0, widthSlider.isEnabled, fontPopup.isEnabled)
     }
 
     // MARK: - Toolbar actions
@@ -300,6 +346,7 @@ final class EditorController: NSWindowController {
     @objc private func toolChanged(_ sender: NSSegmentedControl) {
         canvas.commitTextEditing()
         if let t = ToolKind(rawValue: sender.selectedSegment) { canvas.tool = t }
+        updateControlAvailability()
         window?.makeFirstResponder(canvas)
     }
 
@@ -311,6 +358,7 @@ final class EditorController: NSWindowController {
 
     @objc private func widthChanged(_ sender: NSSlider) {
         canvas.lineWidth = CGFloat(sender.doubleValue)
+        widthValueLabel.stringValue = String(Int(sender.doubleValue.rounded()))
     }
 
     @objc private func fontSizeChanged(_ sender: NSPopUpButton) {

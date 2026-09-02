@@ -44,6 +44,10 @@ Objekte bleiben Vektoren: anklicken, verschieben, an den Griffen ziehen,
 Farbe und Strichstärke nachträglich ändern, Text per Doppelklick neu tippen.
 Eingebrannt wird erst beim Sichern oder Kopieren.
 
+In der Leiste regelt **Stärke** die Strichdicke von Pfeil, Rechteck, Ellipse,
+Stift und Marker; **Text** die Punktgröße von Textobjekten. Was gerade nicht
+greift, ist ausgegraut.
+
 Die Werkzeugleiste folgt der Auswahl: klickt man ein Objekt an, zeigen Farbfeld,
 Stärke-Regler und Textgröße dessen eigene Werte. Jedes Bedienelement schreibt
 nur seine eigene Eigenschaft zurück, ein Farbwechsel lässt die Strichstärke also

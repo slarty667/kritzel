@@ -31,14 +31,17 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
 
     var tool: ToolKind = .select {
         didSet {
+            // Switching to a drawing tool drops the selection. Otherwise it stays
+            // active but invisible, and the next colour click would still hit it.
+            if tool != .select { selectedIndex = nil }
             if tool == .crop {
-                selectedIndex = nil
                 cropRect = CGRect(origin: .zero, size: doc.size)
             } else if oldValue == .crop {
                 cropRect = nil
             }
             window?.invalidateCursorRects(for: self)
             needsDisplay = true
+            if tool != oldValue { onToolChanged?(tool) }
         }
     }
     var color: NSColor = .systemRed {
@@ -612,9 +615,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         if let chars = event.charactersIgnoringModifiers, chars.count == 1,
            let digit = Int(chars), digit >= 1, digit <= ToolKind.allCases.count,
            !event.modifierFlags.contains(.command) {
-            let newTool = ToolKind.allCases[digit - 1]
-            tool = newTool
-            onToolChanged?(newTool)
+            tool = ToolKind.allCases[digit - 1]
             return
         }
         super.keyDown(with: event)
@@ -773,7 +774,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
     @objc func cancelCrop(_ sender: Any?) {
         guard tool == .crop else { return }
         tool = .select
-        onToolChanged?(.select)
         needsDisplay = true
     }
 
@@ -793,7 +793,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         doc.crop(to: c)
         selectedIndex = nil
         tool = .select
-        onToolChanged?(.select)
         finishEdit()
     }
 

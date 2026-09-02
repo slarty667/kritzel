@@ -528,7 +528,11 @@ final class Document {
     // MARK: Destructive edits
 
     func crop(to r: CGRect) {
-        let clipped = r.integral.intersection(CGRect(origin: .zero, size: size))
+        // Round rather than use CGRect.integral: integral grows the rect outwards,
+        // so a typed 1363 x 1329 would silently become 1364 x 1330.
+        let rounded = CGRect(x: r.minX.rounded(), y: r.minY.rounded(),
+                             width: r.width.rounded(), height: r.height.rounded())
+        let clipped = rounded.intersection(CGRect(origin: .zero, size: size))
         guard clipped.width > 4, clipped.height > 4 else { return }
         let w = Int(clipped.width), h = Int(clipped.height)
         guard let rep = makeBitmapRep(width: w, height: h) else { return }

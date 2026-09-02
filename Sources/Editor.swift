@@ -34,6 +34,12 @@ final class EditorController: NSWindowController {
     private var colorSegments: NSSegmentedControl!
     private var widthSlider: NSSlider!
     private var fontPopup: NSPopUpButton!
+    private var toolBar: NSVisualEffectView!
+    private var cropBar: NSVisualEffectView!
+    private var cropWidthField: NSTextField!
+    private var cropHeightField: NSTextField!
+    private let barHeight: CGFloat = 44
+    private let cropBarHeight: CGFloat = 38
 
     init(doc: Document) {
         canvas = CanvasView(doc: doc)
@@ -49,21 +55,24 @@ final class EditorController: NSWindowController {
         canvas.onDocumentChanged = { [weak self] in self?.updateTitle() }
         canvas.onToolChanged = { [weak self] t in self?.toolSegments.selectedSegment = t.rawValue }
         canvas.onOpenImage = { img, name in AppState.shared.newWindow(image: img, name: name) }
+        canvas.onCropChanged = { [weak self] rect in self?.cropFrameChanged(rect) }
         window.center()
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    private func buildInterface() {
-        guard let window = window, let content = window.contentView else { return }
-        let barHeight: CGFloat = 44
-
-        let bar = NSVisualEffectView(frame: NSRect(x: 0, y: content.bounds.height - barHeight,
-                                                   width: content.bounds.width, height: barHeight))
+    private func makeBar() -> NSVisualEffectView {
+        let bar = NSVisualEffectView(frame: .zero)
         bar.material = .titlebar
         bar.blendingMode = .withinWindow
         bar.state = .active
-        bar.autoresizingMask = [.width, .minYMargin]
+        return bar
+    }
+
+    private func buildInterface() {
+        guard let window = window, let content = window.contentView else { return }
+        let bar = makeBar()
+        toolBar = bar
 
         toolSegments = NSSegmentedControl(frame: .zero)
         toolSegments.segmentCount = ToolKind.allCases.count
@@ -136,13 +145,99 @@ final class EditorController: NSWindowController {
             widthSlider.widthAnchor.constraint(equalToConstant: 90)
         ])
 
-        canvas.frame = NSRect(x: 0, y: 0, width: content.bounds.width,
-                              height: content.bounds.height - barHeight)
-        canvas.autoresizingMask = [.width, .height]
+        buildCropBar()
 
         content.addSubview(canvas)
         content.addSubview(bar)
+        content.addSubview(cropBar)
+        layoutContent()
         window.makeFirstResponder(canvas)
+    }
+
+    /// Second row, visible only while the crop tool is active.
+    private func buildCropBar() {
+        cropBar = makeBar()
+        cropBar.isHidden = true
+
+        let title = NSTextField(labelWithString: "Ausschnitt")
+        title.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        title.textColor = .secondaryLabelColor
+
+        cropWidthField = NSTextField(string: "")
+        cropHeightField = NSTextField(string: "")
+        for field in [cropWidthField!, cropHeightField!] {
+            field.alignment = .right
+            field.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+            field.target = self
+            field.action = #selector(cropSizeTyped(_:))
+            field.widthAnchor.constraint(equalToConstant: 62).isActive = true
+        }
+        let times = NSTextField(labelWithString: "×")
+        times.textColor = .secondaryLabelColor
+        let unit = NSTextField(labelWithString: "px")
+        unit.font = NSFont.systemFont(ofSize: 11)
+        unit.textColor = .secondaryLabelColor
+
+        let resetButton = NSButton(title: "Ganzes Bild", target: canvas,
+                                   action: #selector(CanvasView.resetCropFrame(_:)))
+        resetButton.bezelStyle = .rounded
+
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        let cancelButton = NSButton(title: "Abbrechen", target: canvas,
+                                    action: #selector(CanvasView.cancelCrop(_:)))
+        cancelButton.bezelStyle = .rounded
+        cancelButton.keyEquivalent = "\u{1b}"
+
+        let applyButton = NSButton(title: "Anwenden", target: canvas,
+                                   action: #selector(CanvasView.applyCrop(_:)))
+        applyButton.bezelStyle = .rounded
+        applyButton.keyEquivalent = "\r"
+
+        let stack = NSStackView(views: [title, cropWidthField, times, cropHeightField, unit,
+                                        resetButton, spacer, cancelButton, applyButton])
+        stack.orientation = .horizontal
+        stack.alignment = .centerY
+        stack.spacing = 8
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        cropBar.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: cropBar.leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: cropBar.trailingAnchor, constant: -12),
+            stack.centerYAnchor.constraint(equalTo: cropBar.centerYAnchor)
+        ])
+    }
+
+    /// Bars sit on top, the canvas takes whatever is left.
+    private func layoutContent() {
+        guard let content = window?.contentView else { return }
+        let w = content.bounds.width, h = content.bounds.height
+        toolBar.frame = NSRect(x: 0, y: h - barHeight, width: w, height: barHeight)
+        cropBar.frame = NSRect(x: 0, y: h - barHeight - cropBarHeight, width: w, height: cropBarHeight)
+        let used = barHeight + (cropBar.isHidden ? 0 : cropBarHeight)
+        canvas.frame = NSRect(x: 0, y: 0, width: w, height: max(0, h - used))
+    }
+
+    private func cropFrameChanged(_ rect: CGRect?) {
+        let shouldShow = rect != nil
+        if cropBar.isHidden == shouldShow {
+            cropBar.isHidden = !shouldShow
+            layoutContent()
+        }
+        guard let r = rect else { return }
+        let editing = window?.firstResponder is NSText
+        if !editing {
+            cropWidthField.stringValue = String(Int(r.width.rounded()))
+            cropHeightField.stringValue = String(Int(r.height.rounded()))
+        }
+    }
+
+    @objc private func cropSizeTyped(_ sender: Any?) {
+        let w = Double(cropWidthField.stringValue.trimmingCharacters(in: .whitespaces)) ?? 0
+        let h = Double(cropHeightField.stringValue.trimmingCharacters(in: .whitespaces)) ?? 0
+        guard w > 0, h > 0 else { NSSound.beep(); return }
+        canvas.setCropSize(width: CGFloat(w), height: CGFloat(h))
     }
 
     func updateTitle() {
@@ -178,5 +273,9 @@ final class EditorController: NSWindowController {
 extension EditorController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         AppState.shared.forget(self)
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        layoutContent()
     }
 }

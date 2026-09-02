@@ -153,6 +153,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                               [.command, .shift]))
         editMenu.addItem(.separator())
         editMenu.addItem(item("Ausschnitt anwenden", #selector(CanvasView.applyCrop(_:))))
+        editMenu.addItem(item("Ausschnitt auf ganzes Bild", #selector(CanvasView.resetCropFrame(_:))))
+        editMenu.addItem(item("Zuschneiden abbrechen", #selector(CanvasView.cancelCrop(_:))))
         editMenu.addItem(item("Bildgröße ändern…", #selector(CanvasView.resizeImageDialog(_:)), "i",
                               [.command, .option]))
         editItem.submenu = editMenu

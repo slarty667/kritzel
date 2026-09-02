@@ -248,12 +248,63 @@ click(CGPoint(x: 200, y: 320))
 canvas.commitTextEditing()
 check("Leerer Text wird verworfen", canvas.doc.annotations.count == countBeforeEmpty)
 
-// Cropping shrinks the image and takes annotations with it.
+// -- Zuschneiden --------------------------------------------------------
+func cropIs(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, tolerance: CGFloat = 1.5) -> Bool {
+    guard let r = canvas.cropRect else { return false }
+    return abs(r.minX - x) < tolerance && abs(r.minY - y) < tolerance
+        && abs(r.width - w) < tolerance && abs(r.height - h) < tolerance
+}
+
 canvas.tool = .crop
-drag(from: CGPoint(x: 50, y: 50), to: CGPoint(x: 450, y: 350))
+check("Crop-Rahmen startet auf dem ganzen Bild", cropIs(0, 0, 600, 400))
+
+// Corner grip: the opposite corner stays put.
+drag(from: CGPoint(x: 0, y: 0), to: CGPoint(x: 50, y: 50))
+check("Eckgriff zieht die Ecke", cropIs(50, 50, 550, 350))
+drag(from: CGPoint(x: 600, y: 400), to: CGPoint(x: 450, y: 350))
+check("Gegenüberliegender Eckgriff", cropIs(50, 50, 400, 300))
+
+// Edge grip moves one side only.
+drag(from: CGPoint(x: 250, y: 50), to: CGPoint(x: 250, y: 100))
+check("Kantengriff verschiebt nur eine Seite", cropIs(50, 100, 400, 250))
+
+// Dragging inside the frame moves it as a whole.
+drag(from: CGPoint(x: 200, y: 200), to: CGPoint(x: 230, y: 220))
+check("Ziehen im Rahmen verschiebt ihn", cropIs(80, 120, 400, 250))
+
+// The frame cannot leave the image.
+drag(from: CGPoint(x: 230, y: 220), to: CGPoint(x: 900, y: 900))
+check("Rahmen bleibt im Bild", cropIs(200, 150, 400, 250))
+
+// Typed values resize from the top left.
+canvas.setCropSize(width: 120, height: 90)
+check("Getippte Größe wird übernommen", cropIs(200, 310, 120, 90))
+canvas.setCropSize(width: 5000, height: 5000)
+check("Getippte Größe wird begrenzt", (canvas.cropRect?.width ?? 0) <= 600 && (canvas.cropRect?.height ?? 0) <= 400)
+
+// Dragging outside the frame starts a fresh one.
+canvas.resetCropFrame(nil)
+drag(from: CGPoint(x: 200, y: 150), to: CGPoint(x: 400, y: 300))
+check("Rahmen lässt sich neu aufziehen", canvas.cropRect != nil)
+
+// Escape leaves crop mode without touching the image.
+canvas.cancelCrop(nil)
+check("Abbrechen verlässt den Crop-Modus", canvas.cropRect == nil && canvas.tool == .select)
+check("Abbrechen lässt das Bild unangetastet", canvas.doc.size == CGSize(width: 600, height: 400))
+
+// Applying an untouched full frame is a no-op rather than a pointless undo step.
+canvas.tool = .crop
+canvas.applyCrop(nil)
+check("Vollbild-Rahmen schneidet nichts ab", canvas.doc.size == CGSize(width: 600, height: 400))
+
+// The real crop.
+canvas.tool = .crop
+drag(from: CGPoint(x: 0, y: 0), to: CGPoint(x: 50, y: 50))
+drag(from: CGPoint(x: 600, y: 400), to: CGPoint(x: 450, y: 350))
 canvas.applyCrop(nil)
 check("Zuschneiden ändert die Bildgröße", canvas.doc.size == CGSize(width: 400, height: 300))
 check("Nach dem Zuschneiden ist Auswahl aktiv", canvas.tool == .select)
+check("Crop-Leiste verschwindet wieder", canvas.cropRect == nil)
 canvas.undoAction(nil)
 check("Zuschneiden ist widerrufbar", canvas.doc.size == CGSize(width: 600, height: 400))
 

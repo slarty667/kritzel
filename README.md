@@ -30,8 +30,15 @@ weiße Fläche.
 | `⌫` | ausgewähltes Objekt löschen |
 | Pfeiltasten | Auswahl um 1 px schieben, mit `⇧` um 10 px |
 | `⇧` beim Ziehen | Pfeil auf 45°-Schritte, Rechteck/Ellipse auf Quadrat/Kreis |
-| `⏎` | Zuschnitt anwenden (nur bei aktivem Zuschneiden-Werkzeug) |
+| `⏎` / `⎋` | Zuschnitt anwenden / abbrechen |
 | `⌥⌘I` | Bildgröße ändern |
+
+**Zuschneiden** arbeitet wie in Skitch: Rahmen liegt sofort auf dem ganzen Bild,
+außen abgedunkelt, mit Drittel-Raster. Acht Griffe (vier Ecken, vier Kantenmitten)
+justieren den Rahmen, Ziehen im Inneren verschiebt ihn, Ziehen außerhalb zieht
+einen neuen auf, `⇧` an einer Ecke hält das Seitenverhältnis. In der Leiste stehen
+die Pixelmaße zum Eintippen, daneben Ganzes Bild, Abbrechen und Anwenden.
+Der Rahmen kann das Bild nicht verlassen.
 
 Objekte bleiben Vektoren: anklicken, verschieben, an den Griffen ziehen,
 Farbe und Strichstärke nachträglich ändern, Text per Doppelklick neu tippen.

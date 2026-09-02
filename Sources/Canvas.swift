@@ -1,6 +1,15 @@
 import AppKit
 import UniformTypeIdentifiers
 
+/// Which part of the crop frame the mouse grabbed.
+enum CropGrip: Equatable {
+    case none
+    case move
+    case corner(Int)   // 0 bottom left, 1 bottom right, 2 top right, 3 top left
+    case edge(Int)     // 0 bottom, 1 right, 2 top, 3 left
+    case newFrame
+}
+
 enum DragMode: Equatable {
     case none
     case create
@@ -20,7 +29,18 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         }
     }
 
-    var tool: ToolKind = .select { didSet { discardCrop(); window?.invalidateCursorRects(for: self); needsDisplay = true } }
+    var tool: ToolKind = .select {
+        didSet {
+            if tool == .crop {
+                selectedIndex = nil
+                cropRect = CGRect(origin: .zero, size: doc.size)
+            } else if oldValue == .crop {
+                cropRect = nil
+            }
+            window?.invalidateCursorRects(for: self)
+            needsDisplay = true
+        }
+    }
     var color: NSColor = .systemRed { didSet { applyStyleToSelection() } }
     var lineWidth: CGFloat = 5 { didSet { applyStyleToSelection() } }
     var fontSize: CGFloat = 32 { didSet { applyStyleToSelection() } }
@@ -34,7 +54,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
     private var dragOrigin: CGPoint = .zero
     private var lastPoint: CGPoint = .zero
     private var didMutate = false
-    private var cropRect: CGRect?
+    /// The crop frame while the crop tool is active, in image coordinates.
+    private(set) var cropRect: CGRect? {
+        didSet { onCropChanged?(cropRect) }
+    }
+    /// Fires whenever the crop frame appears, moves or disappears.
+    var onCropChanged: ((CGRect?) -> Void)?
+    private var cropGrip: CropGrip = .none
+    private var cropAnchor: CGRect = .zero
 
     private var undoStack: [Document.Snapshot] = []
     private var redoStack: [Document.Snapshot] = []
@@ -145,19 +172,73 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
 
     private func drawCropOverlay(_ imageViewRect: CGRect) {
         guard tool == .crop, let c = cropRect else { return }
-        let vr = toViewRect(c)
-        NSColor.black.withAlphaComponent(0.45).setFill()
+        let frame = toViewRect(c)
+
+        // Dim the image outside the frame. Only the image, not the whole view:
+        // the surrounding window chrome should stay as it is.
+        NSColor.black.withAlphaComponent(0.55).setFill()
         let mask = NSBezierPath(rect: imageViewRect)
-        mask.append(NSBezierPath(rect: vr).reversed)
+        mask.append(NSBezierPath(rect: frame.intersection(imageViewRect)).reversed)
         mask.windingRule = .evenOdd
         mask.fill()
+
+        // Every guide is drawn twice: a dark line underneath, a light one on top.
+        // White alone disappears on white screenshots, which is most of them.
+        let thirds = NSBezierPath()
+        for i in 1...2 {
+            let x = (frame.minX + frame.width * CGFloat(i) / 3).rounded() + 0.5
+            let y = (frame.minY + frame.height * CGFloat(i) / 3).rounded() + 0.5
+            thirds.move(to: CGPoint(x: x, y: frame.minY))
+            thirds.line(to: CGPoint(x: x, y: frame.maxY))
+            thirds.move(to: CGPoint(x: frame.minX, y: y))
+            thirds.line(to: CGPoint(x: frame.maxX, y: y))
+        }
+        NSColor.black.withAlphaComponent(0.35).setStroke()
+        thirds.lineWidth = 3
+        thirds.stroke()
+        NSColor.white.withAlphaComponent(0.75).setStroke()
+        thirds.lineWidth = 1
+        thirds.stroke()
+
+        let outline = NSBezierPath(rect: frame)
+        NSColor.black.withAlphaComponent(0.5).setStroke()
+        outline.lineWidth = 3
+        outline.stroke()
         NSColor.white.setStroke()
-        let outline = NSBezierPath(rect: vr)
-        outline.lineWidth = 1.5
+        outline.lineWidth = 1
         outline.stroke()
 
-        let label = "\(Int(c.width)) × \(Int(c.height))  ⏎ anwenden"
-        drawBadge(label, at: CGPoint(x: vr.minX, y: vr.maxY + 6))
+        drawCropGrips(frame)
+    }
+
+    /// Corner brackets and edge bars on the inside of the frame, with a dark
+    /// halo so they stay visible on light image content.
+    private func drawCropGrips(_ frame: CGRect) {
+        let arm: CGFloat = min(24, frame.width / 3, frame.height / 3)
+        let thickness: CGFloat = 3
+        guard arm > 4 else { return }
+
+        var bars: [CGRect] = [
+            CGRect(x: frame.minX, y: frame.minY, width: arm, height: thickness),
+            CGRect(x: frame.minX, y: frame.minY, width: thickness, height: arm),
+            CGRect(x: frame.maxX - arm, y: frame.minY, width: arm, height: thickness),
+            CGRect(x: frame.maxX - thickness, y: frame.minY, width: thickness, height: arm),
+            CGRect(x: frame.maxX - arm, y: frame.maxY - thickness, width: arm, height: thickness),
+            CGRect(x: frame.maxX - thickness, y: frame.maxY - arm, width: thickness, height: arm),
+            CGRect(x: frame.minX, y: frame.maxY - thickness, width: arm, height: thickness),
+            CGRect(x: frame.minX, y: frame.maxY - arm, width: thickness, height: arm)
+        ]
+        if frame.width > arm * 3 && frame.height > arm * 3 {
+            bars.append(CGRect(x: frame.midX - arm / 2, y: frame.minY, width: arm, height: thickness))
+            bars.append(CGRect(x: frame.midX - arm / 2, y: frame.maxY - thickness, width: arm, height: thickness))
+            bars.append(CGRect(x: frame.minX, y: frame.midY - arm / 2, width: thickness, height: arm))
+            bars.append(CGRect(x: frame.maxX - thickness, y: frame.midY - arm / 2, width: thickness, height: arm))
+        }
+
+        NSColor.black.withAlphaComponent(0.45).setFill()
+        for b in bars { NSBezierPath(rect: b.insetBy(dx: -1, dy: -1)).fill() }
+        NSColor.white.setFill()
+        for b in bars { NSBezierPath(rect: b).fill() }
     }
 
     private func drawBadge(_ text: String, at p: CGPoint) {
@@ -204,9 +285,27 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         switch tool {
         case .select: cursor = .arrow
         case .text: cursor = .iBeam
+        case .crop: return   // handled per grip in mouseMoved
         default: cursor = .crosshair
         }
         addCursorRect(bounds, cursor: cursor)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        for area in trackingAreas { removeTrackingArea(area) }
+        addTrackingArea(NSTrackingArea(rect: bounds,
+                                       options: [.activeInKeyWindow, .mouseMoved, .inVisibleRect],
+                                       owner: self, userInfo: nil))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        guard tool == .crop, dragMode == .none else { return }
+        switch gripHit(at: convert(event.locationInWindow, from: nil)) {
+        case .edge(let i): (i % 2 == 0 ? NSCursor.resizeUpDown : NSCursor.resizeLeftRight).set()
+        case .move: NSCursor.openHand.set()
+        default: NSCursor.crosshair.set()
+        }
     }
 
     // MARK: - Undo
@@ -309,7 +408,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
             needsDisplay = true
 
         case .crop:
-            cropRect = CGRect(origin: p, size: .zero)
+            cropAnchor = cropRect ?? CGRect(origin: .zero, size: doc.size)
+            cropGrip = gripHit(at: vp)
+            if cropGrip == .newFrame { cropRect = CGRect(origin: p, size: .zero) }
             dragMode = .crop
             needsDisplay = true
 
@@ -348,7 +449,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
             selectedAnnotation?.moveHandle(i, to: p)
             didMutate = true
         case .crop:
-            cropRect = rectBetween(dragOrigin, p).intersection(CGRect(origin: .zero, size: doc.size))
+            updateCrop(to: p, constrain: event.modifierFlags.contains(.shift))
             didMutate = true
         case .none:
             break
@@ -433,7 +534,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
             deleteSelection(nil)
             return
         case 53:
-            if cropRect != nil { discardCrop(); needsDisplay = true; return }
+            if tool == .crop { cancelCrop(nil); return }
             if selectedIndex != nil { selectedIndex = nil; needsDisplay = true; return }
         case 36, 76:
             if cropRect != nil { applyCrop(nil); return }
@@ -527,15 +628,115 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
 
     // MARK: - Crop
 
-    private func discardCrop() {
-        cropRect = nil
+    private func cornerPoint(_ r: CGRect, _ index: Int) -> CGPoint {
+        switch index {
+        case 0: return CGPoint(x: r.minX, y: r.minY)
+        case 1: return CGPoint(x: r.maxX, y: r.minY)
+        case 2: return CGPoint(x: r.maxX, y: r.maxY)
+        default: return CGPoint(x: r.minX, y: r.maxY)
+        }
+    }
+
+    /// Which grip sits under the given view point.
+    private func gripHit(at vp: CGPoint) -> CropGrip {
+        guard let c = cropRect else { return .newFrame }
+        let f = toViewRect(c)
+        let reach: CGFloat = 13
+        let corners = [CGPoint(x: f.minX, y: f.minY), CGPoint(x: f.maxX, y: f.minY),
+                       CGPoint(x: f.maxX, y: f.maxY), CGPoint(x: f.minX, y: f.maxY)]
+        for (i, p) in corners.enumerated() where hypot(p.x - vp.x, p.y - vp.y) <= reach {
+            return .corner(i)
+        }
+        let edges = [CGPoint(x: f.midX, y: f.minY), CGPoint(x: f.maxX, y: f.midY),
+                     CGPoint(x: f.midX, y: f.maxY), CGPoint(x: f.minX, y: f.midY)]
+        for (i, p) in edges.enumerated() where hypot(p.x - vp.x, p.y - vp.y) <= reach {
+            return .edge(i)
+        }
+        if f.contains(vp) { return .move }
+        return .newFrame
+    }
+
+    private func updateCrop(to raw: CGPoint, constrain: Bool) {
+        let full = CGRect(origin: .zero, size: doc.size)
+        let p = CGPoint(x: min(max(raw.x, 0), full.width), y: min(max(raw.y, 0), full.height))
+        var r: CGRect
+
+        switch cropGrip {
+        case .newFrame:
+            r = rectBetween(dragOrigin, p)
+
+        case .move:
+            var moved = cropAnchor.offsetBy(dx: p.x - dragOrigin.x, dy: p.y - dragOrigin.y)
+            moved.origin.x = min(max(moved.minX, 0), max(0, full.width - moved.width))
+            moved.origin.y = min(max(moved.minY, 0), max(0, full.height - moved.height))
+            r = moved
+
+        case .corner(let i):
+            let fixed = cornerPoint(cropAnchor, (i + 2) % 4)
+            var target = p
+            if constrain, cropAnchor.height > 1 {
+                // Keep the aspect ratio the frame had when the drag started.
+                let ratio = cropAnchor.width / cropAnchor.height
+                let width = max(abs(target.x - fixed.x), abs(target.y - fixed.y) * ratio)
+                let height = width / max(ratio, 0.0001)
+                target = CGPoint(x: fixed.x + (target.x < fixed.x ? -width : width),
+                                 y: fixed.y + (target.y < fixed.y ? -height : height))
+            }
+            r = rectBetween(fixed, target)
+
+        case .edge(let i):
+            switch i {
+            case 0: r = rectBetween(CGPoint(x: cropAnchor.minX, y: p.y),
+                                    CGPoint(x: cropAnchor.maxX, y: cropAnchor.maxY))
+            case 1: r = rectBetween(CGPoint(x: cropAnchor.minX, y: cropAnchor.minY),
+                                    CGPoint(x: p.x, y: cropAnchor.maxY))
+            case 2: r = rectBetween(CGPoint(x: cropAnchor.minX, y: cropAnchor.minY),
+                                    CGPoint(x: cropAnchor.maxX, y: p.y))
+            default: r = rectBetween(CGPoint(x: p.x, y: cropAnchor.minY),
+                                     CGPoint(x: cropAnchor.maxX, y: cropAnchor.maxY))
+            }
+
+        case .none:
+            return
+        }
+
+        let clipped = r.intersection(full)
+        cropRect = clipped.isNull ? CGRect(origin: p, size: .zero) : clipped
+    }
+
+    /// Sets the crop frame from typed pixel values, anchored at its top left.
+    func setCropSize(width: CGFloat, height: CGFloat) {
+        guard tool == .crop, let c = cropRect else { return }
+        let w = min(max(8, width.rounded()), doc.size.width)
+        let h = min(max(8, height.rounded()), doc.size.height)
+        var r = CGRect(x: c.minX, y: c.maxY - h, width: w, height: h)
+        if r.maxX > doc.size.width { r.origin.x = doc.size.width - w }
+        if r.minY < 0 { r.origin.y = 0 }
+        cropRect = r
+        needsDisplay = true
+    }
+
+    @objc func cancelCrop(_ sender: Any?) {
+        guard tool == .crop else { return }
+        tool = .select
+        onToolChanged?(.select)
+        needsDisplay = true
+    }
+
+    @objc func resetCropFrame(_ sender: Any?) {
+        guard tool == .crop else { return }
+        cropRect = CGRect(origin: .zero, size: doc.size)
+        needsDisplay = true
     }
 
     @objc func applyCrop(_ sender: Any?) {
         guard let c = cropRect, c.width > 4, c.height > 4 else { NSSound.beep(); return }
+        guard c.integral != CGRect(origin: .zero, size: doc.size).integral else {
+            cancelCrop(nil)
+            return
+        }
         pushUndo()
         doc.crop(to: c)
-        cropRect = nil
         selectedIndex = nil
         tool = .select
         onToolChanged?(.select)
@@ -680,7 +881,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         case #selector(undoAction(_:)): return !undoStack.isEmpty
         case #selector(redoAction(_:)): return !redoStack.isEmpty
         case #selector(deleteSelection(_:)), #selector(bringToFront(_:)): return selectedIndex != nil
-        case #selector(applyCrop(_:)): return cropRect != nil
+        case #selector(applyCrop(_:)), #selector(cancelCrop(_:)),
+             #selector(resetCropFrame(_:)): return tool == .crop
         default: return true
         }
     }

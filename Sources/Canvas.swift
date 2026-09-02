@@ -174,13 +174,25 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         guard tool == .crop, let c = cropRect else { return }
         let frame = toViewRect(c)
 
-        // Dim the image outside the frame. Only the image, not the whole view:
-        // the surrounding window chrome should stay as it is.
+        // Dim the image outside the frame with four rectangles. The obvious
+        // even-odd mask needs NSBezierPath.reversed, and reversing the empty path
+        // that an empty rect produces throws an exception mid-draw.
         NSColor.black.withAlphaComponent(0.55).setFill()
-        let mask = NSBezierPath(rect: imageViewRect)
-        mask.append(NSBezierPath(rect: frame.intersection(imageViewRect)).reversed)
-        mask.windingRule = .evenOdd
-        mask.fill()
+        let inner = frame.intersection(imageViewRect)
+        if inner.isNull || inner.isEmpty {
+            NSBezierPath(rect: imageViewRect).fill()
+        } else {
+            let i = imageViewRect
+            for band in [CGRect(x: i.minX, y: inner.maxY, width: i.width, height: i.maxY - inner.maxY),
+                         CGRect(x: i.minX, y: i.minY, width: i.width, height: inner.minY - i.minY),
+                         CGRect(x: i.minX, y: inner.minY, width: inner.minX - i.minX, height: inner.height),
+                         CGRect(x: inner.maxX, y: inner.minY, width: i.maxX - inner.maxX, height: inner.height)]
+                where band.width > 0 && band.height > 0 {
+                NSBezierPath(rect: band).fill()
+            }
+        }
+
+        guard frame.width >= 1, frame.height >= 1 else { return }
 
         // Every guide is drawn twice: a dark line underneath, a light one on top.
         // White alone disappears on white screenshots, which is most of them.
@@ -339,8 +351,26 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
     }
 
     private func finishEdit() {
+        clampCropToImage()
         needsDisplay = true
         onDocumentChanged?()
+    }
+
+    /// Undo, redo and resize change the image under an existing crop frame.
+    /// Without this the frame can end up outside the image entirely.
+    private func clampCropToImage() {
+        guard tool == .crop else {
+            if cropRect != nil { cropRect = nil }
+            return
+        }
+        let full = CGRect(origin: .zero, size: doc.size)
+        guard let c = cropRect else { cropRect = full; return }
+        let clipped = c.intersection(full)
+        if clipped.isNull || clipped.width < 8 || clipped.height < 8 {
+            cropRect = full
+        } else if clipped != c {
+            cropRect = clipped
+        }
     }
 
     // MARK: - Selection helpers
@@ -866,6 +896,12 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
     func debugViewPoint(for imagePoint: CGPoint) -> CGPoint {
         layoutImage()
         return toView(imagePoint)
+    }
+
+    /// Forces a crop frame that normal interaction would clamp, to test drawing.
+    func debugSetCropRect(_ r: CGRect?) {
+        cropRect = r
+        needsDisplay = true
     }
 
     /// Types into the inline text editor without a keyboard.

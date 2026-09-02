@@ -8,6 +8,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var didLaunch = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // AppKit turns an uncaught exception during drawing into a bare trap with
+        // no reason attached. Write it down before that happens.
+        NSSetUncaughtExceptionHandler { exception in
+            let text = "\(Date()) \(exception.name.rawValue): \(exception.reason ?? "")\n"
+                + exception.callStackSymbols.joined(separator: "\n") + "\n\n"
+            let url = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Logs/Kritzel-exceptions.log")
+            if let data = text.data(using: .utf8) {
+                if let handle = try? FileHandle(forWritingTo: url) {
+                    handle.seekToEndOfFile()
+                    handle.write(data)
+                    try? handle.close()
+                } else {
+                    try? data.write(to: url)
+                }
+            }
+        }
         buildMenu()
         if !AppState.shared.newFromClipboard() {
             AppState.shared.newWindow(image: nil, name: nil)

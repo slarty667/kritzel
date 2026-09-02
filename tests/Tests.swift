@@ -297,7 +297,45 @@ canvas.tool = .crop
 canvas.applyCrop(nil)
 check("Vollbild-Rahmen schneidet nichts ab", canvas.doc.size == CGSize(width: 600, height: 400))
 
+// A crop frame is legitimately empty for a moment: the first pixel of a new drag,
+// or a grip pulled across the opposite edge. Rendering has to survive that --
+// NSBezierPath(rect:) returns an empty path for an empty rect, and reversing an
+// empty path throws.
+func renderCanvas() {
+    guard let cache = canvas.bitmapImageRepForCachingDisplay(in: canvas.bounds) else { return }
+    canvas.cacheDisplay(in: canvas.bounds, to: cache)
+}
+
+canvas.tool = .crop
+renderCanvas()
+check("Crop-Overlay rendert", true)
+
+// Bottom edge dragged up past the top edge: height collapses to zero.
+drag(from: CGPoint(x: 300, y: 0), to: CGPoint(x: 300, y: 400))
+renderCanvas()
+check("Flachgezogener Rahmen rendert", true)
+
+// First pixel of a fresh frame: width and height are both zero.
+canvas.mouseDown(with: event(.leftMouseDown, CGPoint(x: 100, y: 100)))
+renderCanvas()
+canvas.mouseUp(with: event(.leftMouseUp, CGPoint(x: 100, y: 100)))
+check("Punktförmiger Rahmen rendert", true)
+
+// Frame dragged completely off the image.
+canvas.resetCropFrame(nil)
+drag(from: CGPoint(x: 0, y: 0), to: CGPoint(x: 5, y: 5))
+renderCanvas()
+check("Winziger Rahmen rendert", true)
+
+// A frame that no longer overlaps the image at all -- what is left over when the
+// image shrinks underneath an existing frame.
+canvas.tool = .crop
+canvas.debugSetCropRect(CGRect(x: 900, y: 900, width: 200, height: 150))
+renderCanvas()
+check("Rahmen ausserhalb des Bildes rendert", true)
+
 // The real crop.
+canvas.tool = .select
 canvas.tool = .crop
 drag(from: CGPoint(x: 0, y: 0), to: CGPoint(x: 50, y: 50))
 drag(from: CGPoint(x: 600, y: 400), to: CGPoint(x: 450, y: 350))
@@ -307,6 +345,19 @@ check("Nach dem Zuschneiden ist Auswahl aktiv", canvas.tool == .select)
 check("Crop-Leiste verschwindet wieder", canvas.cropRect == nil)
 canvas.undoAction(nil)
 check("Zuschneiden ist widerrufbar", canvas.doc.size == CGSize(width: 600, height: 400))
+
+// Undo and redo while the crop tool is still active change the image under the
+// frame. That is how the frame ended up outside the image and crashed drawing.
+canvas.tool = .crop
+canvas.redoAction(nil)
+renderCanvas()
+check("Redo im Crop-Modus rendert", canvas.doc.size == CGSize(width: 400, height: 300))
+check("Rahmen bleibt im geschrumpften Bild",
+      (canvas.cropRect ?? .zero).maxX <= 400.5 && (canvas.cropRect ?? .zero).maxY <= 300.5)
+canvas.undoAction(nil)
+renderCanvas()
+check("Undo im Crop-Modus rendert", canvas.doc.size == CGSize(width: 600, height: 400))
+canvas.cancelCrop(nil)
 
 // The view actually renders something other than the plain background.
 let cache = canvas.bitmapImageRepForCachingDisplay(in: canvas.bounds)!

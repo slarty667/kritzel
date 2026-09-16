@@ -1,14 +1,32 @@
 # Kritzel
 
-Ein schlanker Skitch-Ersatz für diesen Rechner. Native macOS-App in Swift/AppKit,
-ohne Abhängigkeiten, ohne Xcode-Projekt, ad-hoc signiert. Kein Release geplant.
+Ein schlanker Skitch-Ersatz für macOS. Native App in Swift/AppKit, ohne
+Abhängigkeiten, ohne Xcode-Projekt. Entstanden, weil Skitch auf kommenden
+macOS-Versionen ausfällt und die Alternativen den häufigsten Fall verfehlen:
+ein Bild aus einer anderen App kopieren und sofort annotieren, statt erst
+einen Screenshot zu machen.
+
+Läuft auf Macs mit Apple Silicon ab macOS 13.
 
 ## Bauen und installieren
 
+Gebraucht werden nur Apples Command Line Tools, kein Xcode:
+
 ```bash
-./build.sh                       # baut Kritzel.app (braucht nur Command Line Tools)
-cp -R Kritzel.app /Applications/ # installieren
-./run-tests.sh                   # 42 Render- und Interaktionstests
+xcode-select --install           # falls noch nicht vorhanden
+git clone https://github.com/slarty667/kritzel.git
+cd kritzel
+./build.sh                       # baut Kritzel.app
+cp -R Kritzel.app /Applications/
+./run-tests.sh                   # Render- und Interaktionstests
+```
+
+Die App ist ad-hoc signiert und nicht bei Apple notarisiert. Selbst gebaut ist
+das egal. Wer stattdessen ein fertiges `Kritzel.app` geschickt bekommt, muss
+einmalig die Quarantäne-Markierung entfernen, sonst blockt Gatekeeper:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Kritzel.app
 ```
 
 ## Bedienung
@@ -72,6 +90,11 @@ in Ruhe.
 Nur Systemframeworks, keine Runtime, kein Packaging. Die App überlebt
 macOS-Updates, solange AppKit existiert — und das ist der Grund, warum Skitch
 überhaupt stirbt: 32-Bit-Altlasten und eine tote Codebasis, nicht fehlende APIs.
+
+## Lizenz
+
+MIT. Benutzen, ändern, weitergeben — auf eigene Gefahr, ohne Gewähr und
+ohne Support.
 
 ## Bekannte Grenzen
 

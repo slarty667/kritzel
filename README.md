@@ -8,6 +8,13 @@ einen Screenshot zu machen.
 
 Läuft auf Macs mit Apple Silicon ab macOS 13.
 
+*A lightweight Skitch replacement for macOS: paste an image from the clipboard,
+annotate it with arrows, text, shapes, highlighter and pixelation, copy or save
+it. Native Swift/AppKit, no dependencies, no Xcode project. Documentation is in
+German.*
+
+![Kritzel mit annotiertem Screenshot](docs/screenshot.png)
+
 ## Bauen und installieren
 
 Gebraucht werden nur Apples Command Line Tools, kein Xcode:

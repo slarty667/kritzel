@@ -49,7 +49,11 @@ pixelate.p0 = CGPoint(x: 10, y: 10); pixelate.p1 = CGPoint(x: 90, y: 90)
 doc.annotations.append(pixelate)
 
 guard let png = doc.pngData() else { fatalError("kein PNG") }
-try! png.write(to: URL(fileURLWithPath: "/tmp/kritzeltest/out.png"))
+// Own scratch directory, created on demand: a hard coded /tmp path is gone
+// after a reboot and takes the whole suite down with it.
+let scratch = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("kritzel-tests")
+try? FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+try! png.write(to: scratch.appendingPathComponent("out.png"))
 check("PNG erzeugt (> 1 kB)", png.count > 1000)
 
 let rendered = NSBitmapImageRep(data: png)!

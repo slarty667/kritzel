@@ -151,6 +151,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                               [.command, .shift], target: self))
         fileMenu.addItem(.separator())
         fileMenu.addItem(item("Sichern…", #selector(CanvasView.saveImageAs(_:)), "s"))
+        fileMenu.addItem(item("Exportieren…", #selector(CanvasView.saveImageAs(_:)), "e"))
         fileMenu.addItem(item("Als Bild kopieren", #selector(CanvasView.copyImageToPasteboard(_:)), "c",
                               [.command, .shift]))
         fileMenu.addItem(.separator())
@@ -164,6 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(item("Widerrufen", #selector(CanvasView.undoAction(_:)), "z"))
         editMenu.addItem(item("Wiederholen", #selector(CanvasView.redoAction(_:)), "z", [.command, .shift]))
         editMenu.addItem(.separator())
+        editMenu.addItem(item("Kopieren", #selector(NSText.copy(_:)), "c"))
         editMenu.addItem(item("Einfügen", #selector(NSText.paste(_:)), "v"))
         editMenu.addItem(item("Auswahl löschen", #selector(CanvasView.deleteSelection(_:))))
         editMenu.addItem(item("Nach vorne holen", #selector(CanvasView.bringToFront(_:)), "f",

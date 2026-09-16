@@ -325,6 +325,68 @@ check("Rechteck ausgewählt: nur Stärke", state.widthEnabled && !state.fontEnab
 click(CGPoint(x: 560, y: 380))
 check("Klick ins Leere hebt die Auswahl auf", canvas.selectedAnnotation == nil)
 
+// -- Kopieren und Einfügen ---------------------------------------------
+canvas.tool = .select
+canvas.doc.annotations.removeAll()
+
+let original = ArrowAnnotation()
+original.color = kritzelPalette[2]
+original.lineWidth = 9
+original.start = CGPoint(x: 100, y: 100)
+original.end = CGPoint(x: 250, y: 180)
+canvas.doc.annotations.append(original)
+
+click(CGPoint(x: 175, y: 140))
+check("Pfeil für das Kopieren ausgewählt", canvas.selectedAnnotation === original)
+
+canvas.copy(nil)
+canvas.paste(nil)
+check("Einfügen legt ein zweites Objekt an", canvas.doc.annotations.count == 2)
+if let pasted = canvas.doc.annotations.last as? ArrowAnnotation {
+    check("Kopie ist versetzt",
+          abs(pasted.start.x - original.start.x - 18) < 0.01
+          && abs(pasted.start.y - original.start.y + 18) < 0.01)
+    check("Kopie übernimmt den Stil",
+          sameColor(pasted.color, kritzelPalette[2]) && abs(pasted.lineWidth - 9) < 0.01)
+    check("Kopie ist ausgewählt", canvas.selectedAnnotation === pasted)
+    pasted.translate(by: CGPoint(x: 5, y: 5))
+    check("Kopie hängt nicht am Original", abs(original.start.x - 100) < 0.01)
+}
+
+// Pasting again steps further along instead of stacking on the same spot.
+canvas.paste(nil)
+check("Zweites Einfügen legt nicht aufeinander", canvas.doc.annotations.count == 3)
+if let third = canvas.doc.annotations.last as? ArrowAnnotation {
+    check("Versatz wächst", abs(third.start.x - original.start.x - 36) < 0.01)
+}
+
+canvas.undoAction(nil)
+check("Einfügen ist widerrufbar", canvas.doc.annotations.count == 2)
+
+// Without a selection the shortcut means the whole picture. A private pasteboard
+// keeps the test out of whatever the user currently has copied.
+click(CGPoint(x: 580, y: 30))
+check("Nichts ausgewählt", canvas.selectedAnnotation == nil)
+let scratchBoard = NSPasteboard(name: NSPasteboard.Name("de.markusuhl.kritzel.tests"))
+check("Bild landet in der Zwischenablage", canvas.copyImage(to: scratchBoard))
+if let data = scratchBoard.data(forType: .png), let rep = NSBitmapImageRep(data: data) {
+    check("Zwischenablage enthält das ganze Bild in voller Auflösung",
+          rep.pixelsWide == Int(canvas.doc.size.width) && rep.pixelsHigh == Int(canvas.doc.size.height))
+} else {
+    check("Zwischenablage enthält das ganze Bild in voller Auflösung", false)
+}
+scratchBoard.releaseGlobally()
+
+// A fresh clipboard beats the stale object buffer.
+click(CGPoint(x: 175, y: 140))
+canvas.copy(nil)
+NSPasteboard.general.clearContents()
+NSPasteboard.general.setString("irgendwas anderes", forType: .string)
+check("Nach fremdem Kopieren wird kein Objekt mehr eingefügt", !canvas.pasteCopiedAnnotation())
+
+canvas.doc.annotations.removeAll()
+canvas.tool = .select
+
 // -- Zuschneiden --------------------------------------------------------
 func cropIs(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, tolerance: CGFloat = 1.5) -> Bool {
     guard let r = canvas.cropRect else { return false }

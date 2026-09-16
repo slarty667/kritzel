@@ -82,6 +82,12 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
     private var undoStack: [Document.Snapshot] = []
     private var redoStack: [Document.Snapshot] = []
 
+    /// Copied annotation and the clipboard state at the time of copying: if the
+    /// system clipboard has moved on since, a paste means the image, not the object.
+    private var copiedAnnotation: Annotation?
+    private var clipboardCountAtCopy = -1
+    private var pasteOffset: CGFloat = 0
+
     private var textField: NSTextField?
     private weak var editingText: TextAnnotation?
 
@@ -839,13 +845,65 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
     // MARK: - Export
 
     @objc func copyImageToPasteboard(_ sender: Any?) {
+        copyImage(to: .general)
+    }
+
+    @discardableResult
+    func copyImage(to pb: NSPasteboard) -> Bool {
         commitTextEditing()
-        guard let png = doc.pngData(), let img = doc.flattenedImage() else { NSSound.beep(); return }
-        let pb = NSPasteboard.general
+        guard let png = doc.pngData(), let img = doc.flattenedImage() else {
+            NSSound.beep()
+            return false
+        }
         pb.clearContents()
         pb.writeObjects([img])
         pb.setData(png, forType: .png)
         flashFeedback("In die Zwischenablage kopiert")
+        return true
+    }
+
+    // MARK: - Copy and paste
+
+    /// With a selection this copies that object, otherwise the whole picture --
+    /// so one shortcut covers both "duplicate this arrow" and "give me the image".
+    @objc func copy(_ sender: Any?) {
+        commitTextEditing()
+        guard let a = selectedAnnotation else {
+            copyImage(to: .general)
+            return
+        }
+        copiedAnnotation = a.clone()
+        clipboardCountAtCopy = NSPasteboard.general.changeCount
+        pasteOffset = 0
+        flashFeedback("Objekt kopiert")
+    }
+
+    @objc func paste(_ sender: Any?) {
+        commitTextEditing()
+        if pasteCopiedAnnotation() { return }
+        if let image = AppState.shared.clipboardImage() {
+            onOpenImage?(image, "Zwischenablage")
+        } else {
+            NSSound.beep()
+        }
+    }
+
+    /// True when a copied object was pasted. False means the clipboard has moved
+    /// on since the copy, so whatever is in it now wins.
+    @discardableResult
+    func pasteCopiedAnnotation() -> Bool {
+        guard let source = copiedAnnotation,
+              NSPasteboard.general.changeCount == clipboardCountAtCopy else { return false }
+        if tool != .select { tool = .select; onToolChanged?(.select) }
+        pushUndo()
+        pasteOffset += 18
+        let copy = source.clone()
+        copy.translate(by: CGPoint(x: pasteOffset, y: -pasteOffset))
+        doc.annotations.append(copy)
+        selectedIndex = doc.annotations.count - 1
+        finishEdit()
+        flashFeedback("Eingefügt")
+        return true
     }
 
     @objc func saveImageAs(_ sender: Any?) {
@@ -940,6 +998,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         case #selector(undoAction(_:)): return !undoStack.isEmpty
         case #selector(redoAction(_:)): return !redoStack.isEmpty
         case #selector(deleteSelection(_:)), #selector(bringToFront(_:)): return selectedIndex != nil
+        case #selector(paste(_:)):
+            return copiedAnnotation != nil || AppState.shared.clipboardImage() != nil
         case #selector(applyCrop(_:)), #selector(cancelCrop(_:)),
              #selector(resetCropFrame(_:)): return tool == .crop
         default: return true

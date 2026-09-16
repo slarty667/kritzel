@@ -24,7 +24,9 @@ weiße Fläche.
 | `⌘⇧4` | Bildschirmausschnitt aufnehmen und öffnen |
 | `⌘N` | leere Fläche |
 | `⌘O` | Bilddatei öffnen (Drag & Drop ins Fenster geht auch) |
-| `⌘S` | Sichern-Dialog (PNG oder JPEG) |
+| `⌘S` oder `⌘E` | Sichern-Dialog (PNG oder JPEG) |
+| `⌘C` | ausgewähltes Objekt kopieren, ohne Auswahl das ganze Bild |
+| `⌘V` | kopiertes Objekt einfügen, sonst Bild aus der Zwischenablage |
 | `⌘⇧C` | fertiges Bild in die Zwischenablage |
 | `⌘Z` / `⌘⇧Z` | widerrufen / wiederholen |
 | `⌫` | ausgewähltes Objekt löschen |

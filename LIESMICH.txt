@@ -1,0 +1,80 @@
+Kritzel 1.0
+===========
+
+Ein schlanker Skitch-Ersatz fuer macOS. Bilder aus der Zwischenablage
+annotieren, beschriften, verpixeln, zuschneiden -- und per Zwischenablage
+oder Datei wieder rausgeben.
+
+Voraussetzung: Mac mit Apple Silicon, macOS 13 oder neuer.
+
+
+INSTALLATION (zwei Schritte)
+----------------------------
+
+1. Kritzel.app in den Ordner "Programme" ziehen.
+
+2. Einmalig im Terminal (Programme > Dienstprogramme > Terminal):
+
+      xattr -dr com.apple.quarantine /Applications/Kritzel.app
+
+   Danach startet die App normal per Doppelklick.
+
+
+WARUM DIESER ZWEITE SCHRITT?
+----------------------------
+
+Die App ist privat gebaut und nicht bei Apple registriert. macOS haengt an
+alles, was aus dem Netz oder per Mail kommt, eine Quarantaene-Markierung und
+verweigert dann den Start mit "Entwickler kann nicht verifiziert werden".
+Der Befehl entfernt diese Markierung fuer genau diese eine App.
+
+Wer das nicht moechte: der Quellcode liegt bei, ein selbst gebautes
+Kritzel.app hat das Problem gar nicht erst (siehe unten).
+
+
+BEDIENUNG
+---------
+
+Der Normalfall: irgendwo ein Bild kopieren, Kritzel starten -- es liegt
+schon auf der Leinwand. Ist nichts in der Zwischenablage, kommt eine leere
+weisse Flaeche.
+
+  1 bis 9      Werkzeug waehlen: Auswahl, Pfeil, Rechteck, Ellipse, Text,
+               Stift, Marker, Verpixeln, Zuschneiden
+  Cmd V        Bild aus der Zwischenablage in ein neues Fenster
+  Cmd Shift 4  Bildschirmausschnitt aufnehmen und oeffnen
+  Cmd N        leere Flaeche
+  Cmd O        Bilddatei oeffnen (Drag and Drop ins Fenster geht auch)
+  Cmd S        Sichern als PNG oder JPEG
+  Cmd Shift C  fertiges Bild in die Zwischenablage
+  Cmd Z        widerrufen, Cmd Shift Z wiederholen
+  Entf         ausgewaehltes Objekt loeschen
+  Pfeiltasten  Auswahl um 1 Pixel schieben, mit Shift um 10
+  Shift ziehen Pfeil auf 45-Grad-Schritte, Rechteck auf Quadrat
+  Cmd Alt I    Bildgroesse aendern
+
+Objekte bleiben Vektoren: anklicken, verschieben, an den Griffen ziehen,
+Farbe und Staerke nachtraeglich aendern, Text per Doppelklick neu tippen.
+Eingebrannt wird erst beim Sichern oder Kopieren.
+
+Zuschneiden arbeitet wie in Skitch: der Rahmen liegt sofort auf dem ganzen
+Bild, acht Griffe justieren ihn, Ziehen im Inneren verschiebt ihn, in der
+Leiste stehen die Pixelmasse zum Eintippen. Return wendet an, Escape bricht ab.
+
+
+SELBST BAUEN (optional)
+-----------------------
+
+Im Ordner "Quellcode" liegt alles, was die App ausmacht. Gebraucht werden
+nur Apples Command Line Tools, kein Xcode:
+
+      xcode-select --install
+      cd Quellcode
+      ./build.sh
+      cp -R Kritzel.app /Applications/
+
+Ein selbst gebautes Kritzel.app braucht den xattr-Befehl von oben nicht.
+./run-tests.sh laesst die Testsuite laufen.
+
+
+Keine Gewaehr, kein Support, viel Spass.

@@ -17,6 +17,9 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns /tmp/Kritzel.iconset -o AppIcon.icns
 
+# Apple Silicon only. macOS 26 ist Apples letztes Release fuer Intel-Macs,
+# ein x86_64-Slice waere Ballast. Falls doch mal gebraucht: zweiter swiftc-Lauf
+# mit -target x86_64-apple-macos13.0 und die beiden per lipo -create vereinen.
 echo "==> Compile"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"

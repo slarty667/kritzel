@@ -75,6 +75,15 @@ zwischen eingepasst und 100 %. Im vergrößerten Bild verschiebt Scrollen den
 Ausschnitt. Ab 400 % werden die Pixel ungeglättet gezeigt. Ein neues Bild
 startet immer eingepasst.
 
+**Retina**: macOS markiert Screenshots von einem Retina-Display mit 144 dpi,
+also doppelt so vielen Pixeln wie Punkten. Kritzel liest das als 2x-Bild (im
+Fenstertitel steht `@2x`). Stärke und Textgröße in der Leiste sind Punkte, ein
+Pfeil sieht also auf einem 1x- und einem 2x-Bild gleich aus. 100 % zeigt das
+Bild in seiner ursprünglichen Bildschirmgröße. Sichern und Kopieren behalten
+jedes Pixel und die 144-dpi-Angabe, das Ergebnis erscheint in Mail, Pages oder
+Keynote also in Originalgröße statt doppelt so groß. Eine leere Fläche
+entsteht in der Dichte des Hauptbildschirms.
+
 Objekte bleiben Vektoren: anklicken, verschieben, an den Griffen ziehen,
 Farbe und Strichstärke nachträglich ändern, Text per Doppelklick neu tippen.
 Eingebrannt wird erst beim Sichern oder Kopieren.

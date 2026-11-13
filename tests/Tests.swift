@@ -579,6 +579,85 @@ check("Zoom to fit restores the starting state",
       canvas.zoomFactor == nil && canvas.currentScale == fitted
       && near(canvas.debugViewPoint(for: zc), centreBefore))
 
+// Retina: an image tagged with twice as many pixels as points is a 2x image.
+print("\n-- Retina --")
+func taggedImage(pixels: Int, points: CGFloat) -> NSImage {
+    let rep = makeBitmapRep(width: pixels, height: pixels * 3 / 4)!
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+    NSColor.white.setFill()
+    NSBezierPath(rect: CGRect(x: 0, y: 0, width: pixels, height: pixels)).fill()
+    NSGraphicsContext.restoreGraphicsState()
+    rep.size = NSSize(width: points, height: points * 3 / 4)
+    let img = NSImage(size: rep.size)
+    img.addRepresentation(rep)
+    return img
+}
+let retinaDoc = Document(image: taggedImage(pixels: 800, points: 400))
+check("144 dpi image counts as 2x", retinaDoc.pixelsPerPoint == 2)
+check("2x image keeps its pixel size", retinaDoc.size == CGSize(width: 800, height: 600))
+check("72 dpi image counts as 1x", Document(image: taggedImage(pixels: 800, points: 800)).pixelsPerPoint == 1)
+check("300 dpi scan is not a screen density",
+      Document(image: taggedImage(pixels: 1250, points: 300)).pixelsPerPoint == 1)
+
+if let png = retinaDoc.pngData(), let rep = NSBitmapImageRep(data: png) {
+    check("2x export keeps every pixel", rep.pixelsWide == 800 && rep.pixelsHigh == 600)
+    check("2x export is tagged with 144 dpi", abs(rep.size.width - 400) < 0.5)
+    check("Exported file reads back as 2x",
+          NSImage(data: png).map { Document(image: $0).pixelsPerPoint } == 2)
+} else {
+    check("2x export", false)
+}
+if let jpeg = retinaDoc.jpegData(), let rep = NSBitmapImageRep(data: jpeg) {
+    check("2x JPEG is tagged with 144 dpi", rep.pixelsWide == 800 && abs(rep.size.width - 400) < 0.5)
+} else {
+    check("2x JPEG export", false)
+}
+if let png = doc.pngData(), let rep = NSBitmapImageRep(data: png) {
+    check("1x export stays at 72 dpi", abs(rep.size.width - CGFloat(rep.pixelsWide)) < 0.5)
+}
+let blank2x = Document.blank(pixelsPerPoint: 2)
+check("Blank canvas at 2x has twice the pixels",
+      blank2x.size == CGSize(width: 2560, height: 1600) && blank2x.pixelsPerPoint == 2)
+check("Blank canvas at 1x", Document.blank(pixelsPerPoint: 1).size == CGSize(width: 1280, height: 800))
+
+// Tool sizes are points in the toolbar and pixels in the object.
+canvas.doc = retinaDoc
+canvas.tool = .arrow
+canvas.lineWidth = 5
+drag(from: CGPoint(x: 100, y: 100), to: CGPoint(x: 400, y: 300))
+if let a = canvas.doc.annotations.last as? ArrowAnnotation {
+    check("Width 5 draws 10 pixels on a 2x image", abs(a.lineWidth - 10) < 0.01)
+    canvas.tool = .select
+    click(CGPoint(x: 250, y: 200))
+    check("Selecting it shows width 5 again",
+          canvas.selectedAnnotation === a && abs(canvas.lineWidth - 5) < 0.01
+          && abs(controller.debugControlState().width - 5) < 0.01)
+    canvas.lineWidth = 8
+    check("Changing the width writes pixels back", abs(a.lineWidth - 16) < 0.01)
+} else {
+    check("Arrow on a 2x image", false)
+}
+canvas.tool = .text
+canvas.fontSize = 32
+click(CGPoint(x: 500, y: 450))
+canvas.debugSetEditingText("Retina")
+canvas.commitTextEditing()
+if let t = canvas.doc.annotations.last as? TextAnnotation {
+    check("32 pt text is 64 pixels on a 2x image", abs(t.fontSize - 64) < 0.01)
+    check("Toolbar still says 32 pt", controller.debugControlState().fontSize == 32)
+} else {
+    check("Text on a 2x image", false)
+}
+canvas.zoomActualSize(nil)
+check("100% on a 2x image is half a point per pixel",
+      canvas.currentScale == 0.5 && canvas.zoomLevel == 1)
+canvas.zoomIn(nil)
+check("Zoom stops count in percent of actual size", canvas.zoomLevel == 1.5)
+canvas.zoomToFit(nil)
+check("Fit never exceeds 200% of actual size", canvas.zoomLevel <= 2.0001)
+check("Window title names the density", controller.window?.title.hasSuffix("800 × 600 @2x") == true)
+
 // Localization: every string the code looks up needs a German translation,
 // and the German file must not carry entries the code no longer uses.
 print("\n-- Localization --")

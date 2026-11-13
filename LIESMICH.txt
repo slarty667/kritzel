@@ -63,6 +63,10 @@ Objekte bleiben Vektoren: anklicken, verschieben, an den Griffen ziehen,
 Farbe und Staerke nachtraeglich aendern, Text per Doppelklick neu tippen.
 Eingebrannt wird erst beim Sichern oder Kopieren.
 
+Retina-Screenshots werden als 2x-Bilder behandelt: Werkzeuggroessen wirken
+wie auf normalen Bildern, gesicherte Dateien behalten die volle Aufloesung
+und erscheinen in anderen Programmen in Originalgroesse.
+
 Zuschneiden arbeitet wie in Skitch: der Rahmen liegt sofort auf dem ganzen
 Bild, acht Griffe justieren ihn, Ziehen im Inneren verschiebt ihn, in der
 Leiste stehen die Pixelmasse zum Eintippen. Return wendet an, Escape bricht ab.

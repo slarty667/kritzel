@@ -272,14 +272,15 @@ final class EditorController: NSWindowController {
     }
 
     func updateTitle() {
-        let dims = "\(Int(canvas.doc.size.width)) × \(Int(canvas.doc.size.height))"
+        var dims = "\(Int(canvas.doc.size.width)) × \(Int(canvas.doc.size.height))"
+        if canvas.doc.pixelsPerPoint > 1 { dims += " @\(Int(canvas.doc.pixelsPerPoint))x" }
         let name = canvas.doc.sourceName ?? L("Untitled")
         window?.title = "Kritzel — \(name)  ·  \(dims)"
     }
 
     // MARK: - Keeping the controls in step with the selection
 
-    /// Greys out whatever does not apply right now, so that L("Width") and L("Text")
+    /// Greys out whatever does not apply right now, so that "Width" and "Text"
     /// cannot be mistaken for two controls doing the same job.
     private func updateControlAvailability() {
         let usesWidth: Bool
@@ -308,10 +309,12 @@ final class EditorController: NSWindowController {
         if let i = kritzelPalette.firstIndex(where: { sameColor($0, a.color) }) {
             colorSegments.selectedSegment = i
         }
-        widthSlider.doubleValue = Double(min(max(a.lineWidth, CGFloat(widthSlider.minValue)),
+        // The canvas has already read the object's style and converted it to
+        // points, so the controls show the same numbers on 1x and retina images.
+        widthSlider.doubleValue = Double(min(max(canvas.lineWidth, CGFloat(widthSlider.minValue)),
                                              CGFloat(widthSlider.maxValue)))
-        widthValueLabel.stringValue = String(Int(a.lineWidth.rounded()))
-        if let text = a as? TextAnnotation { showFontSize(text.fontSize) }
+        widthValueLabel.stringValue = String(Int(canvas.lineWidth.rounded()))
+        if a is TextAnnotation { showFontSize(canvas.fontSize) }
     }
 
     /// Text objects scaled by their handle end up at sizes the menu does not list,

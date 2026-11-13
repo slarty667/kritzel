@@ -73,6 +73,14 @@ leave the image.
 fitted and 100%. In a zoomed image, scrolling pans the view. From 400% up,
 pixels are shown unsmoothed. A new image always starts fitted to the window.
 
+**Retina**: macOS tags screenshots from a retina display with 144 dpi, twice as
+many pixels as points. Kritzel reads that as a 2x image (the title bar says
+`@2x`). Width and text size in the toolbar are points, so an arrow looks the
+same on a 1x and a 2x image. 100% shows the image at its original on-screen
+size. Saving and copying keep every pixel and the 144 dpi tag, so the result
+appears at its original size in Mail, Pages or Keynote instead of twice as big.
+A blank canvas is created at the density of the main screen.
+
 Objects stay vectors: click, move, drag the handles, change colour and line
 width afterwards, retype text with a double click. They are only burned in when
 you save or copy.

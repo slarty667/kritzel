@@ -53,7 +53,9 @@ func rectBetween(_ a: CGPoint, _ b: CGPoint) -> CGRect {
 // MARK: - Annotation base class
 
 /// One editable object drawn on top of the image.
-/// All coordinates live in image space: origin bottom left, 1 unit == 1 pixel.
+/// All coordinates and sizes live in image space: origin bottom left, 1 unit ==
+/// 1 pixel. The toolbar speaks points; the canvas converts with the document's
+/// pixelsPerPoint, so an arrow looks the same on a 1x and on a retina image.
 class Annotation {
     var color: NSColor = .systemRed
     var lineWidth: CGFloat = 5
@@ -423,20 +425,43 @@ final class Document {
     private var pixelCache: NSImage?
     private var pixelCacheBlock: CGFloat = 0
 
+    /// Size in pixels.
     var size: CGSize { return image.size }
 
-    init(image: NSImage) {
+    /// How many image pixels make one point: 2 for a retina screenshot, 1 for
+    /// ordinary images. Tool sizes are multiplied by it and exports carry it
+    /// as resolution, so the result shows up at its original size elsewhere.
+    let pixelsPerPoint: CGFloat
+
+    init(image: NSImage, pixelsPerPoint: CGFloat? = nil) {
+        self.pixelsPerPoint = pixelsPerPoint ?? Document.detectPixelsPerPoint(image)
         self.image = Document.normalized(image)
     }
 
-    static func blank(width: Int = 1280, height: Int = 800) -> Document {
-        let img = renderImage(width: width, height: height) {
+    /// A blank canvas of the given size in points, at the main screen's density
+    /// unless told otherwise.
+    static func blank(width: Int = 1280, height: Int = 800, pixelsPerPoint: CGFloat? = nil) -> Document {
+        let density = max(1, (pixelsPerPoint ?? NSScreen.main?.backingScaleFactor ?? 1).rounded())
+        let w = Int(CGFloat(width) * density), h = Int(CGFloat(height) * density)
+        let img = renderImage(width: w, height: h) {
             NSColor.white.setFill()
-            NSBezierPath(rect: CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height))).fill()
-        } ?? NSImage(size: NSSize(width: width, height: height))
-        let doc = Document(image: img)
+            NSBezierPath(rect: CGRect(x: 0, y: 0, width: CGFloat(w), height: CGFloat(h))).fill()
+        } ?? NSImage(size: NSSize(width: w, height: h))
+        let doc = Document(image: img, pixelsPerPoint: density)
         doc.isBlank = true
         return doc
+    }
+
+    /// Reads the density from the image's resolution: macOS tags retina
+    /// screenshots with 144 dpi, which makes them twice as many pixels as points.
+    /// Only clean 2x and 3x count. A 300 dpi scan is a print resolution, not a
+    /// screen density, and stays at 1.
+    static func detectPixelsPerPoint(_ img: NSImage) -> CGFloat {
+        guard let best = img.representations.max(by: { $0.pixelsWide < $1.pixelsWide }),
+              best.pixelsWide > 0, best.size.width > 0 else { return 1 }
+        let ratio = CGFloat(best.pixelsWide) / best.size.width
+        let whole = ratio.rounded()
+        return (whole == 2 || whole == 3) && abs(ratio - whole) < 0.05 ? whole : 1
     }
 
     /// Force the logical size to the pixel size of the best representation so that
@@ -497,6 +522,11 @@ final class Document {
 
     // MARK: Rendering
 
+    /// Size in points, which is how large the image appears at 100 %.
+    var pointSize: CGSize {
+        return CGSize(width: size.width / pixelsPerPoint, height: size.height / pixelsPerPoint)
+    }
+
     /// Image plus all annotations, at full pixel resolution.
     func flattened() -> NSBitmapImageRep? {
         let w = Int(round(size.width)), h = Int(round(size.height))
@@ -507,6 +537,9 @@ final class Document {
         image.draw(in: CGRect(x: 0, y: 0, width: CGFloat(w), height: CGFloat(h)))
         for a in annotations { a.draw(doc: self) }
         NSGraphicsContext.restoreGraphicsState()
+        // Drawing needed one unit per pixel. For the file the size goes back to
+        // points, which the encoders write out as resolution (144 dpi at 2x).
+        rep.size = pointSize
         return rep
     }
 
@@ -520,7 +553,7 @@ final class Document {
 
     func flattenedImage() -> NSImage? {
         guard let rep = flattened() else { return nil }
-        let img = NSImage(size: size)
+        let img = NSImage(size: pointSize)
         img.addRepresentation(rep)
         return img
     }

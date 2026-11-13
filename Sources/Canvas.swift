@@ -45,14 +45,16 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
             if tool != oldValue { onToolChanged?(tool) }
         }
     }
+    // Line width and font size are in points, as shown in the toolbar. Objects
+    // store pixels, so every hand-over multiplies or divides by pixelsPerPoint.
     var color: NSColor = .systemRed {
         didSet { pushToSelection { $0.color = self.color } }
     }
     var lineWidth: CGFloat = 5 {
-        didSet { pushToSelection { $0.lineWidth = self.lineWidth } }
+        didSet { pushToSelection { $0.lineWidth = self.lineWidth * self.doc.pixelsPerPoint } }
     }
     var fontSize: CGFloat = 32 {
-        didSet { pushToSelection { ($0 as? TextAnnotation)?.fontSize = self.fontSize } }
+        didSet { pushToSelection { ($0 as? TextAnnotation)?.fontSize = self.fontSize * self.doc.pixelsPerPoint } }
     }
     /// True while the controls are being read from the selection, so that
     /// updating them does not write straight back into the object.
@@ -112,19 +114,28 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
 
     private let margin: CGFloat = 14
 
+    /// View points per image pixel at 100 %: the image at the size it has
+    /// elsewhere on screen. For a retina screenshot that is half a point per
+    /// pixel, which on a retina display is exactly one screen pixel.
+    private var actualSizeScale: CGFloat { return 1 / doc.pixelsPerPoint }
+
+    /// Zoom as shown to the user, 1 meaning 100 %.
+    var zoomLevel: CGFloat { return currentScale / actualSizeScale }
+
     /// Manual zoom in view points per image pixel. Nil fits the image into the
     /// window, which is also what every new document starts with.
     private(set) var zoomFactor: CGFloat?
     /// Offset of the image centre from the view centre while zoomed in.
     private var panOffset: CGPoint = .zero
 
+    /// Zoom levels for the menu commands, 1 meaning 100 %.
     static let zoomStops: [CGFloat] = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8, 16]
 
     private var fitScale: CGFloat {
         let avail = bounds.insetBy(dx: margin, dy: margin)
         guard doc.size.width > 0, doc.size.height > 0, avail.width > 0, avail.height > 0 else { return 1 }
         let fit = min(avail.width / doc.size.width, avail.height / doc.size.height)
-        return max(0.02, min(fit, 2.0))
+        return max(0.02, min(fit, 2.0 * actualSizeScale))
     }
 
     private func layoutImage() {
@@ -154,8 +165,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         let pivot = anchor ?? CGPoint(x: bounds.midX, y: bounds.midY)
         let held = toImage(pivot)
         if let f = factor {
-            let lowest = min(Self.zoomStops[0], fitScale)
-            zoomFactor = min(max(f, lowest), Self.zoomStops[Self.zoomStops.count - 1])
+            let lowest = min(Self.zoomStops[0] * actualSizeScale, fitScale)
+            let highest = Self.zoomStops[Self.zoomStops.count - 1] * actualSizeScale
+            zoomFactor = min(max(f, lowest), highest)
         } else {
             zoomFactor = nil
         }
@@ -165,22 +177,22 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         panOffset.y += pivot.y - now.y
         layoutImage()
         needsDisplay = true
-        if announce { flashFeedback(L("%d%%", Int((scale * 100).rounded()))) }
+        if announce { flashFeedback(L("%d%%", Int((zoomLevel * 100).rounded()))) }
     }
 
     @objc func zoomIn(_ sender: Any?) {
-        let s = currentScale
-        setZoom(Self.zoomStops.first { $0 > s * 1.001 } ?? s)
+        let level = zoomLevel
+        setZoom((Self.zoomStops.first { $0 > level * 1.001 } ?? level) * actualSizeScale)
     }
 
     @objc func zoomOut(_ sender: Any?) {
-        let s = currentScale
-        setZoom(Self.zoomStops.last { $0 < s * 0.999 } ?? s)
+        let level = zoomLevel
+        setZoom((Self.zoomStops.last { $0 < level * 0.999 } ?? level) * actualSizeScale)
     }
 
     @objc func zoomToFit(_ sender: Any?) { setZoom(nil) }
 
-    @objc func zoomActualSize(_ sender: Any?) { setZoom(1) }
+    @objc func zoomActualSize(_ sender: Any?) { setZoom(actualSizeScale) }
 
     private func pan(by d: CGPoint) {
         guard zoomFactor != nil else { return }
@@ -198,7 +210,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
     /// Two finger double tap toggles between fit and 100 %.
     override func smartMagnify(with event: NSEvent) {
         if zoomFactor == nil {
-            setZoom(1, anchor: convert(event.locationInWindow, from: nil))
+            setZoom(actualSizeScale, anchor: convert(event.locationInWindow, from: nil))
         } else {
             setZoom(nil)
         }
@@ -255,7 +267,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         t.scaleX(by: scale, yBy: scale)
         t.concat()
         // Far zoomed in, show the actual pixels instead of a smoothed blur.
-        NSGraphicsContext.current?.imageInterpolation = scale >= 4 ? .none : .high
+        NSGraphicsContext.current?.imageInterpolation = zoomLevel >= 4 ? .none : .high
         doc.image.draw(in: CGRect(origin: .zero, size: doc.size))
         for a in doc.annotations where a !== editingText {
             a.draw(doc: doc)
@@ -519,8 +531,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         isSyncingControls = true
         if let a = selectedAnnotation {
             color = a.color
-            lineWidth = a.lineWidth
-            if let t = a as? TextAnnotation { fontSize = t.fontSize }
+            lineWidth = a.lineWidth / doc.pixelsPerPoint
+            if let t = a as? TextAnnotation { fontSize = t.fontSize / doc.pixelsPerPoint }
         }
         isSyncingControls = false
         onSelectionChanged?(selectedAnnotation)
@@ -582,8 +594,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
             pushUndo()
             let t = TextAnnotation()
             t.color = color
-            t.fontSize = fontSize
-            t.origin = CGPoint(x: p.x, y: p.y - fontSize * 0.75)
+            t.fontSize = fontSize * doc.pixelsPerPoint
+            t.origin = CGPoint(x: p.x, y: p.y - t.fontSize * 0.75)
             doc.annotations.append(t)
             selectedIndex = doc.annotations.count - 1
             dragMode = .none
@@ -644,6 +656,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
     }
 
     private func makeAnnotation(at p: CGPoint) -> Annotation? {
+        let lineWidth = self.lineWidth * doc.pixelsPerPoint
         switch tool {
         case .arrow:
             let a = ArrowAnnotation(); a.color = color; a.lineWidth = lineWidth
@@ -998,7 +1011,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
               NSPasteboard.general.changeCount == clipboardCountAtCopy else { return false }
         if tool != .select { tool = .select; onToolChanged?(.select) }
         pushUndo()
-        pasteOffset += 18
+        pasteOffset += 18 * doc.pixelsPerPoint
         let copy = source.clone()
         copy.translate(by: CGPoint(x: pasteOffset, y: -pasteOffset))
         doc.annotations.append(copy)

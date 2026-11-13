@@ -62,6 +62,10 @@ Objects stay vectors: click, move, drag the handles, change colour and
 width afterwards, retype text with a double click. They are only burned in
 when you save or copy.
 
+Retina screenshots are handled as 2x images: tool sizes look the same as
+on ordinary images, and saved files keep full resolution and appear at
+their original size in other apps.
+
 Crop works like in Skitch: the frame starts on the whole image, eight grips
 adjust it, dragging inside moves it, and the bar shows the pixel dimensions
 for typing. Return applies, Escape cancels.

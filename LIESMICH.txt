@@ -52,6 +52,9 @@ weisse Flaeche.
   Pfeiltasten  Auswahl um 1 Pixel schieben, mit Shift um 10
   Shift ziehen Pfeil auf 45-Grad-Schritte, Rechteck auf Quadrat
   Cmd Alt I    Bildgroesse aendern
+  Cmd + / -    vergroessern / verkleinern (auch Pinch oder Cmd + Scrollen)
+  Cmd 0        Bild ins Fenster einpassen
+  Cmd 1        100 %; im vergroesserten Bild verschiebt Scrollen den Ausschnitt
 
 Objekte bleiben Vektoren: anklicken, verschieben, an den Griffen ziehen,
 Farbe und Staerke nachtraeglich aendern, Text per Doppelklick neu tippen.

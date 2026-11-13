@@ -520,5 +520,64 @@ if let png = canvas.doc.pngData(), let rep = NSBitmapImageRep(data: png) {
     check("Export aus dem Fenster in Originalauflösung", false)
 }
 
+// Zoom: fit by default, manual factors keep the anchor point in place.
+canvas.tool = .select
+let zs = canvas.doc.size
+let zc = CGPoint(x: zs.width / 2, y: zs.height / 2)
+func near(_ a: CGPoint, _ b: CGPoint, _ tol: CGFloat = 0.01) -> Bool {
+    return abs(a.x - b.x) < tol && abs(a.y - b.y) < tol
+}
+check("Start: ins Fenster eingepasst", canvas.zoomFactor == nil)
+let fitted = canvas.currentScale
+let centreBefore = canvas.debugViewPoint(for: zc)
+
+canvas.zoomActualSize(nil)
+check("100 %: ein Bildpixel = ein Punkt", canvas.currentScale == 1)
+check("Zoom hält die Bildmitte fest", near(canvas.debugViewPoint(for: zc), centreBefore))
+
+canvas.zoomIn(nil)
+check("Vergrößern springt auf die nächste Stufe", canvas.currentScale == 1.5)
+canvas.zoomOut(nil); canvas.zoomOut(nil)
+check("Verkleinern springt auf die Stufe darunter", canvas.currentScale == 0.75)
+
+// Zoom around a point off centre: that image point must not move.
+canvas.setZoom(4)
+let pivotImage = CGPoint(x: zs.width * 0.3, y: zs.height * 0.6)
+let pivotView = canvas.debugViewPoint(for: pivotImage)
+canvas.setZoom(8, anchor: pivotView)
+check("Zoom um den Mauszeiger hält den Punkt darunter fest",
+      near(canvas.debugViewPoint(for: pivotImage), pivotView))
+
+// Panning stops at the image edge instead of scrolling it out of view.
+canvas.debugPan(by: CGPoint(x: 100_000, y: 100_000))
+let corner = canvas.debugViewPoint(for: .zero)
+check("Verschieben endet am Bildrand", near(corner, CGPoint(x: 14, y: 14)))
+
+// Drawing while zoomed and panned lands on the right image pixels.
+canvas.setZoom(3)
+let visible = CGPoint(x: (canvas.bounds.midX - canvas.debugViewPoint(for: .zero).x) / 3,
+                      y: (canvas.bounds.midY - canvas.debugViewPoint(for: .zero).y) / 3)
+let before = canvas.doc.annotations.count
+canvas.tool = .rect
+drag(from: visible, to: CGPoint(x: visible.x + 40, y: visible.y + 30))
+if canvas.doc.annotations.count == before + 1, let r = canvas.doc.annotations.last as? RectAnnotation {
+    check("Zeichnen im Zoom trifft die Bildkoordinaten",
+          near(r.p0, visible, 0.5) && near(r.p1, CGPoint(x: visible.x + 40, y: visible.y + 30), 0.5))
+} else {
+    check("Zeichnen im Zoom trifft die Bildkoordinaten", false)
+}
+renderCanvas()
+check("Gezoomte Ansicht rendert", true)
+
+canvas.setZoom(1000)
+check("Zoom ist nach oben begrenzt", canvas.currentScale == 16)
+canvas.setZoom(0.0001)
+check("Zoom ist nach unten begrenzt", canvas.currentScale >= 0.02 && canvas.currentScale <= 0.1)
+
+canvas.zoomToFit(nil)
+check("Anpassen stellt die Ausgangslage wieder her",
+      canvas.zoomFactor == nil && canvas.currentScale == fitted
+      && near(canvas.debugViewPoint(for: zc), centreBefore))
+
 print(failures == 0 ? "\nALLE TESTS BESTANDEN" : "\n\(failures) TESTS FEHLGESCHLAGEN")
 exit(failures == 0 ? 0 : 1)

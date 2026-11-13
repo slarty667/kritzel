@@ -59,6 +59,8 @@ weiße Fläche.
 | `⇧` beim Ziehen | Pfeil auf 45°-Schritte, Rechteck/Ellipse auf Quadrat/Kreis |
 | `⏎` / `⎋` | Zuschnitt anwenden / abbrechen |
 | `⌥⌘I` | Bildgröße ändern |
+| `⌘+` / `⌘-` | Vergrößern / verkleinern |
+| `⌘0` / `⌘1` | An Fenster anpassen / 100 % |
 
 **Zuschneiden** arbeitet wie in Skitch: Rahmen liegt sofort auf dem ganzen Bild,
 außen abgedunkelt, mit Drittel-Raster. Acht Griffe (vier Ecken, vier Kantenmitten)
@@ -66,6 +68,12 @@ justieren den Rahmen, Ziehen im Inneren verschiebt ihn, Ziehen außerhalb zieht
 einen neuen auf, `⇧` an einer Ecke hält das Seitenverhältnis. In der Leiste stehen
 die Pixelmaße zum Eintippen, daneben Ganzes Bild, Abbrechen und Anwenden.
 Der Rahmen kann das Bild nicht verlassen.
+
+**Zoom**: `⌘+`/`⌘-` in festen Stufen von 10 % bis 1600 %, Pinch auf dem Trackpad
+oder `⌘` + Scrollen zoomt um den Mauszeiger, Doppeltipp mit zwei Fingern wechselt
+zwischen eingepasst und 100 %. Im vergrößerten Bild verschiebt Scrollen den
+Ausschnitt. Ab 400 % werden die Pixel ungeglättet gezeigt. Ein neues Bild
+startet immer eingepasst.
 
 Objekte bleiben Vektoren: anklicken, verschieben, an den Griffen ziehen,
 Farbe und Strichstärke nachträglich ändern, Text per Doppelklick neu tippen.
@@ -106,5 +114,4 @@ ohne Support.
 ## Bekannte Grenzen
 
 - Kein Dokumentformat: einmal gesichert, sind die Objekte im PNG eingebrannt.
-- Kein Zoom, das Bild wird ins Fenster eingepasst (max. 200 %).
 - Text ist einzeilig.

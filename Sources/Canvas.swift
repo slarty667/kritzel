@@ -25,6 +25,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         didSet {
             undoStack.removeAll(); redoStack.removeAll()
             selectedIndex = nil; cropRect = nil
+            zoomFactor = nil; panOffset = .zero
             needsDisplay = true
         }
     }
@@ -109,13 +110,112 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
 
     // MARK: - Coordinate mapping
 
-    private func layoutImage() {
-        let avail = bounds.insetBy(dx: 14, dy: 14)
-        guard doc.size.width > 0, doc.size.height > 0, avail.width > 0, avail.height > 0 else { return }
+    private let margin: CGFloat = 14
+
+    /// Manual zoom in view points per image pixel. Nil fits the image into the
+    /// window, which is also what every new document starts with.
+    private(set) var zoomFactor: CGFloat?
+    /// Offset of the image centre from the view centre while zoomed in.
+    private var panOffset: CGPoint = .zero
+
+    static let zoomStops: [CGFloat] = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8, 16]
+
+    private var fitScale: CGFloat {
+        let avail = bounds.insetBy(dx: margin, dy: margin)
+        guard doc.size.width > 0, doc.size.height > 0, avail.width > 0, avail.height > 0 else { return 1 }
         let fit = min(avail.width / doc.size.width, avail.height / doc.size.height)
-        scale = max(0.02, min(fit, 2.0))
-        imageOrigin = CGPoint(x: (bounds.width - doc.size.width * scale) / 2,
-                              y: (bounds.height - doc.size.height * scale) / 2)
+        return max(0.02, min(fit, 2.0))
+    }
+
+    private func layoutImage() {
+        guard doc.size.width > 0, doc.size.height > 0 else { return }
+        scale = zoomFactor ?? fitScale
+        if zoomFactor == nil { panOffset = .zero }
+        // An axis that fits stays centred; one that overflows can be panned
+        // until the image edge (plus margin) reaches the view edge.
+        let reachX = max(0, (doc.size.width * scale - bounds.width) / 2 + margin)
+        let reachY = max(0, (doc.size.height * scale - bounds.height) / 2 + margin)
+        panOffset.x = min(max(panOffset.x, -reachX), reachX)
+        panOffset.y = min(max(panOffset.y, -reachY), reachY)
+        imageOrigin = CGPoint(x: (bounds.width - doc.size.width * scale) / 2 + panOffset.x,
+                              y: (bounds.height - doc.size.height * scale) / 2 + panOffset.y)
+    }
+
+    // MARK: - Zoom
+
+    /// Current magnification, whether fitted or set by hand.
+    var currentScale: CGFloat { return zoomFactor ?? fitScale }
+
+    /// Sets the zoom and keeps the image point under `anchor` (view coordinates,
+    /// default: view centre) where it is. Nil goes back to fit-to-window.
+    func setZoom(_ factor: CGFloat?, anchor: CGPoint? = nil, announce: Bool = true) {
+        commitTextEditing()
+        layoutImage()
+        let pivot = anchor ?? CGPoint(x: bounds.midX, y: bounds.midY)
+        let held = toImage(pivot)
+        if let f = factor {
+            let lowest = min(Self.zoomStops[0], fitScale)
+            zoomFactor = min(max(f, lowest), Self.zoomStops[Self.zoomStops.count - 1])
+        } else {
+            zoomFactor = nil
+        }
+        layoutImage()
+        let now = toView(held)
+        panOffset.x += pivot.x - now.x
+        panOffset.y += pivot.y - now.y
+        layoutImage()
+        needsDisplay = true
+        if announce { flashFeedback("\(Int((scale * 100).rounded())) %") }
+    }
+
+    @objc func zoomIn(_ sender: Any?) {
+        let s = currentScale
+        setZoom(Self.zoomStops.first { $0 > s * 1.001 } ?? s)
+    }
+
+    @objc func zoomOut(_ sender: Any?) {
+        let s = currentScale
+        setZoom(Self.zoomStops.last { $0 < s * 0.999 } ?? s)
+    }
+
+    @objc func zoomToFit(_ sender: Any?) { setZoom(nil) }
+
+    @objc func zoomActualSize(_ sender: Any?) { setZoom(1) }
+
+    private func pan(by d: CGPoint) {
+        guard zoomFactor != nil else { return }
+        commitTextEditing()
+        panOffset.x += d.x
+        panOffset.y += d.y
+        needsDisplay = true
+    }
+
+    override func magnify(with event: NSEvent) {
+        setZoom(currentScale * (1 + event.magnification),
+                anchor: convert(event.locationInWindow, from: nil), announce: false)
+    }
+
+    /// Two finger double tap toggles between fit and 100 %.
+    override func smartMagnify(with event: NSEvent) {
+        if zoomFactor == nil {
+            setZoom(1, anchor: convert(event.locationInWindow, from: nil))
+        } else {
+            setZoom(nil)
+        }
+    }
+
+    /// Scrolling pans a zoomed image, with Command held it zooms around the pointer.
+    override func scrollWheel(with event: NSEvent) {
+        let precise = event.hasPreciseScrollingDeltas
+        if event.modifierFlags.contains(.command) {
+            let dy = event.scrollingDeltaY * (precise ? 1 : 8)
+            guard dy != 0 else { return }
+            setZoom(currentScale * exp(dy * 0.01),
+                    anchor: convert(event.locationInWindow, from: nil), announce: false)
+        } else {
+            let k: CGFloat = precise ? 1 : 10
+            pan(by: CGPoint(x: event.scrollingDeltaX * k, y: -event.scrollingDeltaY * k))
+        }
     }
 
     private func toImage(_ p: CGPoint) -> CGPoint {
@@ -154,7 +254,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         t.translateX(by: imageOrigin.x, yBy: imageOrigin.y)
         t.scaleX(by: scale, yBy: scale)
         t.concat()
-        NSGraphicsContext.current?.imageInterpolation = .high
+        // Far zoomed in, show the actual pixels instead of a smoothed blur.
+        NSGraphicsContext.current?.imageInterpolation = scale >= 4 ? .none : .high
         doc.image.draw(in: CGRect(origin: .zero, size: doc.size))
         for a in doc.annotations where a !== editingText {
             a.draw(doc: doc)
@@ -978,6 +1079,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         layoutImage()
         return toView(imagePoint)
     }
+
+    /// Pans without a scroll event.
+    func debugPan(by d: CGPoint) { pan(by: d) }
 
     /// Forces a crop frame that normal interaction would clamp, to test drawing.
     func debugSetCropRect(_ r: CGRect?) {

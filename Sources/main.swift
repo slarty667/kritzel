@@ -179,6 +179,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editItem.submenu = editMenu
         mainMenu.addItem(editItem)
 
+        // View menu
+        let viewItem = NSMenuItem()
+        let viewMenu = NSMenu(title: "Darstellung")
+        viewMenu.addItem(item("Vergrößern", #selector(CanvasView.zoomIn(_:)), "+"))
+        // Second, hidden binding: on a German keyboard plain "+" is its own key,
+        // on a US one it needs Shift and the key reports "=".
+        let zoomInAlt = item("Vergrößern", #selector(CanvasView.zoomIn(_:)), "=")
+        zoomInAlt.isHidden = true
+        zoomInAlt.allowsKeyEquivalentWhenHidden = true
+        viewMenu.addItem(zoomInAlt)
+        viewMenu.addItem(item("Verkleinern", #selector(CanvasView.zoomOut(_:)), "-"))
+        viewMenu.addItem(.separator())
+        viewMenu.addItem(item("An Fenster anpassen", #selector(CanvasView.zoomToFit(_:)), "0"))
+        viewMenu.addItem(item("Originalgröße (100 %)", #selector(CanvasView.zoomActualSize(_:)), "1"))
+        viewItem.submenu = viewMenu
+        mainMenu.addItem(viewItem)
+
         // Window menu
         let windowItem = NSMenuItem()
         let windowMenu = NSMenu(title: "Fenster")

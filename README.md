@@ -1,117 +1,125 @@
 # Kritzel
 
-Ein schlanker Skitch-Ersatz für macOS. Native App in Swift/AppKit, ohne
-Abhängigkeiten, ohne Xcode-Projekt. Entstanden, weil Skitch auf kommenden
-macOS-Versionen ausfällt und die Alternativen den häufigsten Fall verfehlen:
-ein Bild aus einer anderen App kopieren und sofort annotieren, statt erst
-einen Screenshot zu machen.
+A lightweight Skitch replacement for macOS. A native Swift/AppKit app with no
+dependencies and no Xcode project. It exists because Skitch stops working on
+upcoming macOS versions and the alternatives miss the most common case: copy an
+image in some other app and annotate it right away, instead of taking a
+screenshot first.
 
-Läuft auf Macs mit Apple Silicon ab macOS 13.
+Runs on Apple Silicon Macs with macOS 13 or later. The interface is available
+in English and German and follows the system language. *Kritzel* is German for
+"scribble".
 
-*A lightweight Skitch replacement for macOS: paste an image from the clipboard,
-annotate it with arrows, text, shapes, highlighter and pixelation, copy or save
-it. Native Swift/AppKit, no dependencies, no Xcode project. Documentation is in
-German.*
+*Deutsche Fassung: [README.de.md](README.de.md)*
 
-![Kritzel mit annotiertem Screenshot](docs/screenshot.png)
+![Kritzel with an annotated screenshot](docs/screenshot.png)
 
-## Bauen und installieren
+## Build and install
 
-Gebraucht werden nur Apples Command Line Tools, kein Xcode:
+All you need are Apple's Command Line Tools, not Xcode:
 
 ```bash
-xcode-select --install           # falls noch nicht vorhanden
+xcode-select --install           # if not installed yet
 git clone https://github.com/slarty667/kritzel.git
 cd kritzel
-./build.sh                       # baut Kritzel.app
+./build.sh                       # builds Kritzel.app
 cp -R Kritzel.app /Applications/
-./run-tests.sh                   # Render- und Interaktionstests
+./run-tests.sh                   # render and interaction tests
 ```
 
-Die App ist ad-hoc signiert und nicht bei Apple notarisiert. Selbst gebaut ist
-das egal. Wer stattdessen ein fertiges `Kritzel.app` geschickt bekommt, muss
-einmalig die Quarantäne-Markierung entfernen, sonst blockt Gatekeeper:
+The app is ad-hoc signed and not notarized by Apple. If you build it yourself
+that does not matter. If someone sends you a ready-made `Kritzel.app`, you have
+to remove the quarantine flag once, or Gatekeeper blocks it:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/Kritzel.app
 ```
 
-## Bedienung
+## Usage
 
-Der Normalfall: irgendwo ein Bild kopieren, Kritzel aktivieren, es liegt schon
-auf der Leinwand. Ist beim Start nichts in der Zwischenablage, kommt eine leere
-weiße Fläche.
+The normal case: copy an image anywhere, switch to Kritzel, and it is already
+on the canvas. If the clipboard holds no image at launch, you get a blank white
+canvas.
 
-| Taste | Wirkung |
+| Key | Effect |
 |---|---|
-| `1`–`9` | Werkzeug wählen: Auswahl, Pfeil, Rechteck, Ellipse, Text, Stift, Marker, Verpixeln, Zuschneiden |
-| `⌘V` | Bild aus der Zwischenablage in ein neues Fenster |
-| `⌘⇧4` | Bildschirmausschnitt aufnehmen und öffnen |
-| `⌘N` | leere Fläche |
-| `⌘O` | Bilddatei öffnen (Drag & Drop ins Fenster geht auch) |
-| `⌘S` oder `⌘E` | Sichern-Dialog (PNG oder JPEG) |
-| `⌘C` | ausgewähltes Objekt kopieren, ohne Auswahl das ganze Bild |
-| `⌘V` | kopiertes Objekt einfügen, sonst Bild aus der Zwischenablage |
-| `⌘⇧C` | fertiges Bild in die Zwischenablage |
-| `⌘Z` / `⌘⇧Z` | widerrufen / wiederholen |
-| `⌫` | ausgewähltes Objekt löschen |
-| Pfeiltasten | Auswahl um 1 px schieben, mit `⇧` um 10 px |
-| `⇧` beim Ziehen | Pfeil auf 45°-Schritte, Rechteck/Ellipse auf Quadrat/Kreis |
-| `⏎` / `⎋` | Zuschnitt anwenden / abbrechen |
-| `⌥⌘I` | Bildgröße ändern |
-| `⌘+` / `⌘-` | Vergrößern / verkleinern |
-| `⌘0` / `⌘1` | An Fenster anpassen / 100 % |
+| `1`–`9` | Pick a tool: Select, Arrow, Rectangle, Ellipse, Text, Pen, Highlighter, Pixelate, Crop |
+| `⌘V` | Image from the clipboard into a new window |
+| `⌘⇧4` | Capture a screen selection and open it |
+| `⌘N` | Blank canvas |
+| `⌘O` | Open an image file (drag and drop onto the window works too) |
+| `⌘S` or `⌘E` | Save dialog (PNG or JPEG) |
+| `⌘C` | Copy the selected object, or the whole image if nothing is selected |
+| `⌘V` | Paste the copied object, otherwise the image from the clipboard |
+| `⌘⇧C` | Finished image to the clipboard |
+| `⌘Z` / `⌘⇧Z` | Undo / redo |
+| `⌫` | Delete the selected object |
+| Arrow keys | Nudge the selection by 1 px, with `⇧` by 10 px |
+| `⇧` while dragging | Arrow in 45° steps, rectangle as a square |
+| `⏎` / `⎋` | Apply / cancel the crop |
+| `⌥⌘I` | Resize the image |
+| `⌘+` / `⌘-` | Zoom in / out |
+| `⌘0` / `⌘1` | Zoom to fit / 100% |
 
-**Zuschneiden** arbeitet wie in Skitch: Rahmen liegt sofort auf dem ganzen Bild,
-außen abgedunkelt, mit Drittel-Raster. Acht Griffe (vier Ecken, vier Kantenmitten)
-justieren den Rahmen, Ziehen im Inneren verschiebt ihn, Ziehen außerhalb zieht
-einen neuen auf, `⇧` an einer Ecke hält das Seitenverhältnis. In der Leiste stehen
-die Pixelmaße zum Eintippen, daneben Ganzes Bild, Abbrechen und Anwenden.
-Der Rahmen kann das Bild nicht verlassen.
+**Crop** works like in Skitch: the frame starts on the whole image, dimmed
+outside, with a rule-of-thirds grid. Eight grips (four corners, four edge
+midpoints) adjust the frame, dragging inside moves it, dragging outside draws a
+new one, `⇧` on a corner keeps the aspect ratio. The bar shows the pixel
+dimensions for typing, next to Whole image, Cancel and Apply. The frame cannot
+leave the image.
 
-**Zoom**: `⌘+`/`⌘-` in festen Stufen von 10 % bis 1600 %, Pinch auf dem Trackpad
-oder `⌘` + Scrollen zoomt um den Mauszeiger, Doppeltipp mit zwei Fingern wechselt
-zwischen eingepasst und 100 %. Im vergrößerten Bild verschiebt Scrollen den
-Ausschnitt. Ab 400 % werden die Pixel ungeglättet gezeigt. Ein neues Bild
-startet immer eingepasst.
+**Zoom**: `⌘+`/`⌘-` in fixed stops from 10% to 1600%, pinch on the trackpad or
+`⌘` + scroll zooms around the pointer, a two-finger double tap toggles between
+fitted and 100%. In a zoomed image, scrolling pans the view. From 400% up,
+pixels are shown unsmoothed. A new image always starts fitted to the window.
 
-Objekte bleiben Vektoren: anklicken, verschieben, an den Griffen ziehen,
-Farbe und Strichstärke nachträglich ändern, Text per Doppelklick neu tippen.
-Eingebrannt wird erst beim Sichern oder Kopieren.
+Objects stay vectors: click, move, drag the handles, change colour and line
+width afterwards, retype text with a double click. They are only burned in when
+you save or copy.
 
-In der Leiste regelt **Stärke** die Strichdicke von Pfeil, Rechteck, Ellipse,
-Stift und Marker; **Text** die Punktgröße von Textobjekten. Was gerade nicht
-greift, ist ausgegraut.
+In the toolbar, **Width** sets the stroke of arrow, rectangle, ellipse, pen and
+highlighter; **Text** sets the point size of text objects. Whatever does not
+apply right now is greyed out.
 
-Die Werkzeugleiste folgt der Auswahl: klickt man ein Objekt an, zeigen Farbfeld,
-Stärke-Regler und Textgröße dessen eigene Werte. Jedes Bedienelement schreibt
-nur seine eigene Eigenschaft zurück, ein Farbwechsel lässt die Strichstärke also
-in Ruhe.
+The toolbar follows the selection: click an object and the colour swatches, the
+width slider and the text size show its own values. Each control writes back
+only its own property, so changing the colour leaves the line width alone.
 
-## Aufbau
+## Layout
 
-| Datei | Inhalt |
+| File | Contents |
 |---|---|
-| `Sources/Model.swift` | Annotationsobjekte und Dokument: Zeichnen, Treffertest, Griffe, Crop, Skalieren, PNG/JPEG-Export, Undo-Snapshots |
-| `Sources/Canvas.swift` | Zeichenfläche: Rendering, Maus, Auswahl, Inline-Texteditor, Undo-Stack, Drag & Drop |
-| `Sources/Editor.swift` | Fenster mit Werkzeugleiste, Farbpalette, Stärke, Textgröße |
-| `Sources/State.swift` | Fensterverwaltung und Zwischenablage-Zugriff |
-| `Sources/main.swift` | Menüleiste, App-Delegate, Einstiegspunkt |
-| `tools/makeicon.swift` | erzeugt das App-Icon beim Bauen |
-| `tests/Tests.swift` | Pixeltests der Renderpfade plus Interaktionstests mit synthetischen Mausevents |
+| `Sources/Model.swift` | Annotation objects and the document: drawing, hit testing, handles, crop, scaling, PNG/JPEG export, undo snapshots |
+| `Sources/Canvas.swift` | The canvas: rendering, mouse, selection, zoom, inline text editor, undo stack, drag and drop |
+| `Sources/Editor.swift` | Window with toolbar, colour palette, width, text size |
+| `Sources/Strings.swift` | `L()`: lookup of user-facing strings, the English text is the key |
+| `Localization/` | One `.lproj` folder per language; `de.lproj` holds the German translation |
+| `Sources/State.swift` | Window registry and clipboard access |
+| `Sources/main.swift` | Menu bar, app delegate, entry point |
+| `tools/makeicon.swift` | Generates the app icon at build time |
+| `tools/screenshot.swift` | Renders `docs/screenshot.png` off-screen (`./make-screenshot.sh`) |
+| `tests/Tests.swift` | Pixel tests of the render paths, interaction tests with synthesized mouse events, translation completeness |
 
-## Warum Swift und nicht Python
+## Translating
 
-Nur Systemframeworks, keine Runtime, kein Packaging. Die App überlebt
-macOS-Updates, solange AppKit existiert — und das ist der Grund, warum Skitch
-überhaupt stirbt: 32-Bit-Altlasten und eine tote Codebasis, nicht fehlende APIs.
+The code contains English text: `L("Zoom to Fit")`. Another language is a new
+folder `Localization/<code>.lproj/` with a copy of
+`de.lproj/Localizable.strings` and `InfoPlist.strings`, plus the language code
+in `CFBundleLocalizations` in `Info.plist`. `./run-tests.sh` checks that the
+German file misses no string and carries no leftovers.
 
-## Lizenz
+## Why Swift and not Python
 
-MIT. Benutzen, ändern, weitergeben — auf eigene Gefahr, ohne Gewähr und
-ohne Support.
+System frameworks only, no runtime, no packaging. The app survives macOS
+updates for as long as AppKit exists — which is exactly why Skitch is dying:
+32-bit legacy and a dead code base, not missing APIs.
 
-## Bekannte Grenzen
+## License
 
-- Kein Dokumentformat: einmal gesichert, sind die Objekte im PNG eingebrannt.
-- Text ist einzeilig.
+MIT. Use it, change it, pass it on — at your own risk, without warranty and
+without support.
+
+## Known limits
+
+- No document format: once saved, the objects are burned into the PNG.
+- Text is single-line.

@@ -7,15 +7,15 @@ enum ToolKind: Int, CaseIterable {
 
     var label: String {
         switch self {
-        case .select:   return "Auswahl"
-        case .arrow:    return "Pfeil"
-        case .rect:     return "Rechteck"
-        case .ellipse:  return "Ellipse"
-        case .text:     return "Text"
-        case .pen:      return "Stift"
-        case .marker:   return "Marker"
-        case .pixelate: return "Verpixeln"
-        case .crop:     return "Zuschneiden"
+        case .select:   return L("Select")
+        case .arrow:    return L("Arrow")
+        case .rect:     return L("Rectangle")
+        case .ellipse:  return L("Ellipse")
+        case .text:     return L("Text")
+        case .pen:      return L("Pen")
+        case .marker:   return L("Highlighter")
+        case .pixelate: return L("Pixelate")
+        case .crop:     return L("Crop")
         }
     }
 

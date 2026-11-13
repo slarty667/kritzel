@@ -17,9 +17,9 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns /tmp/Kritzel.iconset -o AppIcon.icns
 
-# Apple Silicon only. macOS 26 ist Apples letztes Release fuer Intel-Macs,
-# ein x86_64-Slice waere Ballast. Falls doch mal gebraucht: zweiter swiftc-Lauf
-# mit -target x86_64-apple-macos13.0 und die beiden per lipo -create vereinen.
+# Apple Silicon only. macOS 26 is Apple's last release for Intel Macs, so an
+# x86_64 slice would be dead weight. If it is ever needed: run swiftc a second
+# time with -target x86_64-apple-macos13.0 and join the two with lipo -create.
 echo "==> Compile"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -29,6 +29,9 @@ swiftc -swift-version 5 -O -target arm64-apple-macos13.0 \
 echo "==> Bundle"
 cp Info.plist "$APP/Contents/Info.plist"
 cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# One .lproj folder per language. macOS picks the one matching the user's
+# preferred languages and falls back to English.
+cp -R Localization/*.lproj "$APP/Contents/Resources/"
 codesign --force --sign - "$APP"
 
-echo "==> Fertig: $(pwd)/$APP"
+echo "==> Done: $(pwd)/$APP"

@@ -6,6 +6,9 @@ annotieren, beschriften, verpixeln, zuschneiden -- und per Zwischenablage
 oder Datei wieder rausgeben.
 
 Voraussetzung: Mac mit Apple Silicon, macOS 13 oder neuer.
+Die App spricht Deutsch und Englisch und folgt der Systemsprache.
+
+English instructions: README.txt
 
 
 INSTALLATION (zwei Schritte)
@@ -68,11 +71,11 @@ Leiste stehen die Pixelmasse zum Eintippen. Return wendet an, Escape bricht ab.
 SELBST BAUEN (optional)
 -----------------------
 
-Im Ordner "Quellcode" liegt alles, was die App ausmacht. Gebraucht werden
+Im Ordner "Source" liegt alles, was die App ausmacht. Gebraucht werden
 nur Apples Command Line Tools, kein Xcode:
 
       xcode-select --install
-      cd Quellcode
+      cd Source
       ./build.sh
       cp -R Kritzel.app /Applications/
 

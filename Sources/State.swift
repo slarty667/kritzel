@@ -53,7 +53,7 @@ final class AppState {
     @discardableResult
     func newFromClipboard() -> Bool {
         guard let img = clipboardImage() else { return false }
-        newWindow(image: img, name: "Zwischenablage")
+        newWindow(image: img, name: L("Clipboard"))
         return true
     }
 }

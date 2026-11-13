@@ -165,7 +165,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         panOffset.y += pivot.y - now.y
         layoutImage()
         needsDisplay = true
-        if announce { flashFeedback("\(Int((scale * 100).rounded())) %") }
+        if announce { flashFeedback(L("%d%%", Int((scale * 100).rounded()))) }
     }
 
     @objc func zoomIn(_ sender: Any?) {
@@ -390,10 +390,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
 
     private func drawHintIfNeeded(_ imageViewRect: CGRect) {
         guard doc.isBlank, doc.annotations.isEmpty, draft == nil else { return }
-        let lines = ["Leere Fläche",
-                     "⌘V  Bild aus der Zwischenablage einfügen",
-                     "⌘⇧4  Bildschirmausschnitt aufnehmen",
-                     "oder eine Bilddatei hierher ziehen"]
+        let lines = [L("Blank canvas"),
+                     L("⌘V  Paste an image from the clipboard"),
+                     L("⌘⇧4  Capture a screen selection"),
+                     L("or drop an image file here")]
         let title: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 22, weight: .semibold),
             .foregroundColor: NSColor.black.withAlphaComponent(0.35)]
@@ -925,13 +925,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
     @objc func resizeImageDialog(_ sender: Any?) {
         commitTextEditing()
         let alert = NSAlert()
-        alert.messageText = "Bildgröße ändern"
-        alert.informativeText = "Aktuell \(Int(doc.size.width)) × \(Int(doc.size.height)) Pixel. Neue Breite in Pixeln:"
+        alert.messageText = L("Resize image")
+        alert.informativeText = L("Currently %d × %d pixels. New width in pixels:",
+                                  Int(doc.size.width), Int(doc.size.height))
         let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
         input.stringValue = String(Int(doc.size.width))
         alert.accessoryView = input
-        alert.addButton(withTitle: "Ändern")
-        alert.addButton(withTitle: "Abbrechen")
+        alert.addButton(withTitle: L("Resize"))
+        alert.addButton(withTitle: L("Cancel"))
         alert.window.initialFirstResponder = input
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         guard let newWidth = Double(input.stringValue.trimmingCharacters(in: .whitespaces)), newWidth > 10 else {
@@ -959,7 +960,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         pb.clearContents()
         pb.writeObjects([img])
         pb.setData(png, forType: .png)
-        flashFeedback("In die Zwischenablage kopiert")
+        flashFeedback(L("Copied to clipboard"))
         return true
     }
 
@@ -976,14 +977,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         copiedAnnotation = a.clone()
         clipboardCountAtCopy = NSPasteboard.general.changeCount
         pasteOffset = 0
-        flashFeedback("Objekt kopiert")
+        flashFeedback(L("Object copied"))
     }
 
     @objc func paste(_ sender: Any?) {
         commitTextEditing()
         if pasteCopiedAnnotation() { return }
         if let image = AppState.shared.clipboardImage() {
-            onOpenImage?(image, "Zwischenablage")
+            onOpenImage?(image, L("Clipboard"))
         } else {
             NSSound.beep()
         }
@@ -1003,7 +1004,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         doc.annotations.append(copy)
         selectedIndex = doc.annotations.count - 1
         finishEdit()
-        flashFeedback("Eingefügt")
+        flashFeedback(L("Pasted"))
         return true
     }
 
@@ -1013,7 +1014,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
         panel.allowedContentTypes = [.png, .jpeg]
         panel.canCreateDirectories = true
         panel.nameFieldStringValue = suggestedFileName()
-        panel.title = "Bild sichern"
+        panel.title = L("Save image")
         panel.begin { [weak self] response in
             guard response == .OK, let url = panel.url, let self = self else { return }
             let isJPEG = url.pathExtension.lowercased() == "jpg" || url.pathExtension.lowercased() == "jpeg"
@@ -1023,7 +1024,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
                 try payload.write(to: url)
                 self.doc.sourceName = url.lastPathComponent
                 self.onDocumentChanged?()
-                self.flashFeedback("Gesichert: \(url.lastPathComponent)")
+                self.flashFeedback(L("Saved: %@", url.lastPathComponent))
             } catch {
                 let alert = NSAlert(error: error)
                 alert.runModal()
@@ -1033,7 +1034,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSMenuItemValidation {
 
     private func suggestedFileName() -> String {
         let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd 'um' HH.mm.ss"
+        fmt.dateFormat = L("yyyy-MM-dd 'at' HH.mm.ss")
         return "Kritzel \(fmt.string(from: Date())).png"
     }
 

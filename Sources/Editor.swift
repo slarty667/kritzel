@@ -122,20 +122,20 @@ final class EditorController: NSWindowController {
         widthSlider = NSSlider(value: 5, minValue: 1, maxValue: 24, target: self,
                                action: #selector(widthChanged(_:)))
         widthSlider.isContinuous = true
-        widthSlider.toolTip = "Strichstärke"
+        widthSlider.toolTip = L("Line width")
         widthSlider.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
         fontPopup = NSPopUpButton(frame: .zero, pullsDown: false)
         for size in [16, 22, 32, 44, 64, 96] {
-            fontPopup.addItem(withTitle: "\(size) pt")
+            fontPopup.addItem(withTitle: L("%d pt", size))
             fontPopup.lastItem?.tag = size
         }
         fontPopup.selectItem(withTitle: "32 pt")
         fontPopup.target = self
         fontPopup.action = #selector(fontSizeChanged(_:))
-        fontPopup.toolTip = "Textgröße"
+        fontPopup.toolTip = L("Text size")
 
-        widthLabel = NSTextField(labelWithString: "Stärke")
+        widthLabel = NSTextField(labelWithString: L("Width"))
         widthLabel.font = NSFont.systemFont(ofSize: 11)
         widthLabel.textColor = .secondaryLabelColor
 
@@ -145,14 +145,14 @@ final class EditorController: NSWindowController {
         widthValueLabel.alignment = .right
         widthValueLabel.widthAnchor.constraint(equalToConstant: 18).isActive = true
 
-        fontLabel = NSTextField(labelWithString: "Text")
+        fontLabel = NSTextField(labelWithString: L("Text"))
         fontLabel.font = NSFont.systemFont(ofSize: 11)
         fontLabel.textColor = .secondaryLabelColor
 
-        let copyButton = NSButton(title: "Kopieren", target: canvas,
+        let copyButton = NSButton(title: L("Copy"), target: canvas,
                                   action: #selector(CanvasView.copyImageToPasteboard(_:)))
         copyButton.bezelStyle = .rounded
-        let saveButton = NSButton(title: "Sichern…", target: canvas,
+        let saveButton = NSButton(title: L("Save…"), target: canvas,
                                   action: #selector(CanvasView.saveImageAs(_:)))
         saveButton.bezelStyle = .rounded
         saveButton.keyEquivalent = ""
@@ -190,7 +190,7 @@ final class EditorController: NSWindowController {
         cropBar = makeBar()
         cropBar.isHidden = true
 
-        let title = NSTextField(labelWithString: "Ausschnitt")
+        let title = NSTextField(labelWithString: L("Crop area"))
         title.font = NSFont.systemFont(ofSize: 11, weight: .medium)
         title.textColor = .secondaryLabelColor
 
@@ -209,19 +209,19 @@ final class EditorController: NSWindowController {
         unit.font = NSFont.systemFont(ofSize: 11)
         unit.textColor = .secondaryLabelColor
 
-        let resetButton = NSButton(title: "Ganzes Bild", target: canvas,
+        let resetButton = NSButton(title: L("Whole image"), target: canvas,
                                    action: #selector(CanvasView.resetCropFrame(_:)))
         resetButton.bezelStyle = .rounded
 
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        let cancelButton = NSButton(title: "Abbrechen", target: canvas,
+        let cancelButton = NSButton(title: L("Cancel"), target: canvas,
                                     action: #selector(CanvasView.cancelCrop(_:)))
         cancelButton.bezelStyle = .rounded
         cancelButton.keyEquivalent = "\u{1b}"
 
-        let applyButton = NSButton(title: "Anwenden", target: canvas,
+        let applyButton = NSButton(title: L("Apply"), target: canvas,
                                    action: #selector(CanvasView.applyCrop(_:)))
         applyButton.bezelStyle = .rounded
         applyButton.keyEquivalent = "\r"
@@ -273,13 +273,13 @@ final class EditorController: NSWindowController {
 
     func updateTitle() {
         let dims = "\(Int(canvas.doc.size.width)) × \(Int(canvas.doc.size.height))"
-        let name = canvas.doc.sourceName ?? "Ohne Titel"
+        let name = canvas.doc.sourceName ?? L("Untitled")
         window?.title = "Kritzel — \(name)  ·  \(dims)"
     }
 
     // MARK: - Keeping the controls in step with the selection
 
-    /// Greys out whatever does not apply right now, so that "Stärke" and "Text"
+    /// Greys out whatever does not apply right now, so that L("Width") and L("Text")
     /// cannot be mistaken for two controls doing the same job.
     private func updateControlAvailability() {
         let usesWidth: Bool
@@ -326,7 +326,7 @@ final class EditorController: NSWindowController {
         if let index = fontPopup.itemArray.firstIndex(where: { $0.representedObject as? String == "custom" }) {
             fontPopup.removeItem(at: index)
         }
-        fontPopup.insertItem(withTitle: "\(value) pt", at: 0)
+        fontPopup.insertItem(withTitle: L("%d pt", value), at: 0)
         if let item = fontPopup.item(at: 0) {
             item.tag = value
             item.representedObject = "custom"

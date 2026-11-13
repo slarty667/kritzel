@@ -66,8 +66,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func paste(_ sender: Any?) {
         if !AppState.shared.newFromClipboard() {
             let alert = NSAlert()
-            alert.messageText = "Kein Bild in der Zwischenablage"
-            alert.informativeText = "Kopiere zuerst ein Bild, dann noch mal ⌘V."
+            alert.messageText = L("No image on the clipboard")
+            alert.informativeText = L("Copy an image first, then press ⌘V again.")
             alert.runModal()
         }
     }
@@ -103,14 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func showAbout(_ sender: Any?) {
         let alert = NSAlert()
         alert.messageText = "Kritzel"
-        alert.informativeText = """
-        Ein schlanker Skitch-Ersatz für diesen Rechner.
-
-        Werkzeuge 1–9 per Zifferntaste, ⌘V holt ein Bild aus der \
-        Zwischenablage, ⌘⇧4 nimmt einen Bildschirmausschnitt auf. \
-        Objekte bleiben editierbar: anklicken, verschieben, an den \
-        Griffen ziehen, ⌫ löscht.
-        """
+        alert.informativeText = L("about.text")
         alert.runModal()
     }
 
@@ -130,79 +123,79 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Application menu
         let appMenuItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(item("Über Kritzel", #selector(showAbout(_:)), "", [], target: self))
+        appMenu.addItem(item(L("About Kritzel"), #selector(showAbout(_:)), "", [], target: self))
         appMenu.addItem(.separator())
-        appMenu.addItem(item("Kritzel ausblenden", #selector(NSApplication.hide(_:)), "h"))
-        let hideOthers = item("Andere ausblenden", #selector(NSApplication.hideOtherApplications(_:)), "h",
+        appMenu.addItem(item(L("Hide Kritzel"), #selector(NSApplication.hide(_:)), "h"))
+        let hideOthers = item(L("Hide Others"), #selector(NSApplication.hideOtherApplications(_:)), "h",
                               [.command, .option])
         appMenu.addItem(hideOthers)
-        appMenu.addItem(item("Alle einblenden", #selector(NSApplication.unhideAllApplications(_:))))
+        appMenu.addItem(item(L("Show All"), #selector(NSApplication.unhideAllApplications(_:))))
         appMenu.addItem(.separator())
-        appMenu.addItem(item("Kritzel beenden", #selector(NSApplication.terminate(_:)), "q"))
+        appMenu.addItem(item(L("Quit Kritzel"), #selector(NSApplication.terminate(_:)), "q"))
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)
 
         // File menu
         let fileItem = NSMenuItem()
-        let fileMenu = NSMenu(title: "Ablage")
-        fileMenu.addItem(item("Neue Fläche", #selector(newBlankDocument(_:)), "n", target: self))
-        fileMenu.addItem(item("Öffnen…", #selector(openImageFile(_:)), "o", target: self))
-        fileMenu.addItem(item("Bildschirmausschnitt…", #selector(captureScreenshot(_:)), "4",
+        let fileMenu = NSMenu(title: L("File"))
+        fileMenu.addItem(item(L("New Blank Canvas"), #selector(newBlankDocument(_:)), "n", target: self))
+        fileMenu.addItem(item(L("Open…"), #selector(openImageFile(_:)), "o", target: self))
+        fileMenu.addItem(item(L("Screen Selection…"), #selector(captureScreenshot(_:)), "4",
                               [.command, .shift], target: self))
         fileMenu.addItem(.separator())
-        fileMenu.addItem(item("Sichern…", #selector(CanvasView.saveImageAs(_:)), "s"))
-        fileMenu.addItem(item("Exportieren…", #selector(CanvasView.saveImageAs(_:)), "e"))
-        fileMenu.addItem(item("Als Bild kopieren", #selector(CanvasView.copyImageToPasteboard(_:)), "c",
+        fileMenu.addItem(item(L("Save…"), #selector(CanvasView.saveImageAs(_:)), "s"))
+        fileMenu.addItem(item(L("Export…"), #selector(CanvasView.saveImageAs(_:)), "e"))
+        fileMenu.addItem(item(L("Copy as Image"), #selector(CanvasView.copyImageToPasteboard(_:)), "c",
                               [.command, .shift]))
         fileMenu.addItem(.separator())
-        fileMenu.addItem(item("Fenster schließen", #selector(NSWindow.performClose(_:)), "w"))
+        fileMenu.addItem(item(L("Close Window"), #selector(NSWindow.performClose(_:)), "w"))
         fileItem.submenu = fileMenu
         mainMenu.addItem(fileItem)
 
         // Edit menu
         let editItem = NSMenuItem()
-        let editMenu = NSMenu(title: "Bearbeiten")
-        editMenu.addItem(item("Widerrufen", #selector(CanvasView.undoAction(_:)), "z"))
-        editMenu.addItem(item("Wiederholen", #selector(CanvasView.redoAction(_:)), "z", [.command, .shift]))
+        let editMenu = NSMenu(title: L("Edit"))
+        editMenu.addItem(item(L("Undo"), #selector(CanvasView.undoAction(_:)), "z"))
+        editMenu.addItem(item(L("Redo"), #selector(CanvasView.redoAction(_:)), "z", [.command, .shift]))
         editMenu.addItem(.separator())
-        editMenu.addItem(item("Kopieren", #selector(NSText.copy(_:)), "c"))
-        editMenu.addItem(item("Einfügen", #selector(NSText.paste(_:)), "v"))
-        editMenu.addItem(item("Auswahl löschen", #selector(CanvasView.deleteSelection(_:))))
-        editMenu.addItem(item("Nach vorne holen", #selector(CanvasView.bringToFront(_:)), "f",
+        editMenu.addItem(item(L("Copy"), #selector(NSText.copy(_:)), "c"))
+        editMenu.addItem(item(L("Paste"), #selector(NSText.paste(_:)), "v"))
+        editMenu.addItem(item(L("Delete Selection"), #selector(CanvasView.deleteSelection(_:))))
+        editMenu.addItem(item(L("Bring to Front"), #selector(CanvasView.bringToFront(_:)), "f",
                               [.command, .shift]))
         editMenu.addItem(.separator())
-        editMenu.addItem(item("Ausschnitt anwenden", #selector(CanvasView.applyCrop(_:))))
-        editMenu.addItem(item("Ausschnitt auf ganzes Bild", #selector(CanvasView.resetCropFrame(_:))))
-        editMenu.addItem(item("Zuschneiden abbrechen", #selector(CanvasView.cancelCrop(_:))))
-        editMenu.addItem(item("Bildgröße ändern…", #selector(CanvasView.resizeImageDialog(_:)), "i",
+        editMenu.addItem(item(L("Apply Crop"), #selector(CanvasView.applyCrop(_:))))
+        editMenu.addItem(item(L("Reset Crop to Whole Image"), #selector(CanvasView.resetCropFrame(_:))))
+        editMenu.addItem(item(L("Cancel Crop"), #selector(CanvasView.cancelCrop(_:))))
+        editMenu.addItem(item(L("Resize Image…"), #selector(CanvasView.resizeImageDialog(_:)), "i",
                               [.command, .option]))
         editItem.submenu = editMenu
         mainMenu.addItem(editItem)
 
         // View menu
         let viewItem = NSMenuItem()
-        let viewMenu = NSMenu(title: "Darstellung")
-        viewMenu.addItem(item("Vergrößern", #selector(CanvasView.zoomIn(_:)), "+"))
+        let viewMenu = NSMenu(title: L("View"))
+        viewMenu.addItem(item(L("Zoom In"), #selector(CanvasView.zoomIn(_:)), "+"))
         // Second, hidden binding: on a German keyboard plain "+" is its own key,
         // on a US one it needs Shift and the key reports "=".
-        let zoomInAlt = item("Vergrößern", #selector(CanvasView.zoomIn(_:)), "=")
+        let zoomInAlt = item(L("Zoom In"), #selector(CanvasView.zoomIn(_:)), "=")
         zoomInAlt.isHidden = true
         zoomInAlt.allowsKeyEquivalentWhenHidden = true
         viewMenu.addItem(zoomInAlt)
-        viewMenu.addItem(item("Verkleinern", #selector(CanvasView.zoomOut(_:)), "-"))
+        viewMenu.addItem(item(L("Zoom Out"), #selector(CanvasView.zoomOut(_:)), "-"))
         viewMenu.addItem(.separator())
-        viewMenu.addItem(item("An Fenster anpassen", #selector(CanvasView.zoomToFit(_:)), "0"))
-        viewMenu.addItem(item("Originalgröße (100 %)", #selector(CanvasView.zoomActualSize(_:)), "1"))
+        viewMenu.addItem(item(L("Zoom to Fit"), #selector(CanvasView.zoomToFit(_:)), "0"))
+        viewMenu.addItem(item(L("Actual Size (100%)"), #selector(CanvasView.zoomActualSize(_:)), "1"))
         viewItem.submenu = viewMenu
         mainMenu.addItem(viewItem)
 
         // Window menu
         let windowItem = NSMenuItem()
-        let windowMenu = NSMenu(title: "Fenster")
-        windowMenu.addItem(item("Im Dock ablegen", #selector(NSWindow.performMiniaturize(_:)), "m"))
-        windowMenu.addItem(item("Zoomen", #selector(NSWindow.performZoom(_:))))
+        let windowMenu = NSMenu(title: L("Window"))
+        windowMenu.addItem(item(L("Minimize"), #selector(NSWindow.performMiniaturize(_:)), "m"))
+        windowMenu.addItem(item(L("Zoom"), #selector(NSWindow.performZoom(_:))))
         windowMenu.addItem(.separator())
-        windowMenu.addItem(item("Alle nach vorne", #selector(NSApplication.arrangeInFront(_:))))
+        windowMenu.addItem(item(L("Bring All to Front"), #selector(NSApplication.arrangeInFront(_:))))
         windowItem.submenu = windowMenu
         mainMenu.addItem(windowItem)
 

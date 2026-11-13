@@ -1,0 +1,4 @@
+/* English is the source language: the code uses the English text as key,
+   so only symbolic keys need an entry here. */
+
+"about.text" = "A lightweight Skitch replacement for this Mac.\n\nTools 1–9 via the number keys, ⌘V fetches an image from the clipboard, ⌘⇧4 captures a screen selection. Objects stay editable: click, move, drag the handles, ⌫ deletes.";

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Rendert docs/screenshot.png offscreen aus der App selbst, damit der Screenshot
-# im README nach UI-Aenderungen reproduzierbar bleibt. Braucht keine
-# Bildschirmaufnahme-Rechte.
+# Renders docs/screenshot.png off-screen from the app itself, so the README
+# screenshot stays reproducible after UI changes. Needs no screen recording
+# permission.
 set -euo pipefail
 cd "$(dirname "$0")"
 rm -rf /tmp/kritzel-shot && mkdir -p /tmp/kritzel-shot

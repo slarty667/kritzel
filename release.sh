@@ -1,5 +1,6 @@
 #!/bin/bash
-# Schnuert ein Weitergabe-Paket: fertige App, Quellcode und LIESMICH in einem ZIP.
+# Bundles a hand-out package: the built app, the source code and the plain
+# text instructions (English and German) in one ZIP.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -9,14 +10,15 @@ OUT="$HOME/Documents/Claude/Projects/Alltag/Kritzel-$VERSION.zip"
 
 ./build.sh >/dev/null
 
-rm -rf "$STAGE" && mkdir -p "$STAGE/Kritzel/Quellcode"
+rm -rf "$STAGE" && mkdir -p "$STAGE/Kritzel/Source"
 cp -R Kritzel.app "$STAGE/Kritzel/"
-cp LIESMICH.txt "$STAGE/Kritzel/"
-cp -R Sources tests tools build.sh run-tests.sh Info.plist README.md "$STAGE/Kritzel/Quellcode/"
+cp README.txt LIESMICH.txt "$STAGE/Kritzel/"
+cp -R Sources Localization tests tools build.sh run-tests.sh Info.plist README.md README.de.md LICENSE \
+  "$STAGE/Kritzel/Source/"
 
 rm -f "$OUT"
-# ditto statt zip: erhaelt die Code-Signatur und die Bundle-Struktur.
+# ditto rather than zip: it keeps the code signature and the bundle structure.
 ditto -c -k --sequesterRsrc --keepParent "$STAGE/Kritzel" "$OUT"
 
-echo "Paket: $OUT"
-echo "Groesse: $(du -h "$OUT" | cut -f1)"
+echo "Package: $OUT"
+echo "Size: $(du -h "$OUT" | cut -f1)"

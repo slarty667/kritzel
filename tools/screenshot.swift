@@ -27,32 +27,32 @@ let mockup = renderImage(width: 1180, height: 760) {
 
     // Header strip
     bar(0, 690, 1180, 70, NSColor(srgbRed: 0.96, green: 0.97, blue: 0.98, alpha: 1), radius: 0)
-    label("Quartalsübersicht", 40, 712, size: 22, weight: .semibold)
-    label("Zeitraum 01.07. – 30.09.", 40, 696, size: 11, color: grey)
+    label("Quarterly overview", 40, 712, size: 22, weight: .semibold)
+    label("Period Jul 1 – Sep 30", 40, 696, size: 11, color: grey)
     bar(980, 706, 160, 32, NSColor(srgbRed: 0.88, green: 0.90, blue: 0.93, alpha: 1), radius: 6)
-    label("Exportieren", 1010, 715, size: 12, color: grey)
+    label("Export", 1010, 715, size: 12, color: grey)
 
     // Metric cards
-    let cardTitles = ["Sitzungen", "Conversions", "Umsatz"]
-    let cardValues = ["48.310", "1.204", "92.480 €"]
+    let cardTitles = ["Sessions", "Conversions", "Revenue"]
+    let cardValues = ["48,310", "1,204", "€92,480"]
     for i in 0..<3 {
         let x = 40 + CGFloat(i) * 368
         bar(x, 520, 344, 130, NSColor(srgbRed: 0.97, green: 0.975, blue: 0.98, alpha: 1), radius: 8)
         label(cardTitles[i], x + 20, 610, size: 12, color: grey)
         label(cardValues[i], x + 20, 560, size: 34, weight: .semibold)
-        label(i == 1 ? "+ 318 %" : "+ 4 %", x + 20, 538, size: 12,
+        label(i == 1 ? "+318%" : "+4%", x + 20, 538, size: 12,
               color: NSColor(srgbRed: 0.2, green: 0.6, blue: 0.35, alpha: 1))
     }
 
     // Table
-    label("Top-Seiten", 40, 470, size: 14, weight: .semibold)
-    let rows = [("/leistungen/analytics", "8.420", "312"),
-                ("/blog/tracking-ohne-cookies", "6.115", "188"),
-                ("/kontakt", "4.902", "504"),
-                ("/blog/server-side-tagging", "3.744", "96")]
+    label("Top pages", 40, 470, size: 14, weight: .semibold)
+    let rows = [("/services/analytics", "8,420", "312"),
+                ("/blog/cookieless-tracking", "6,115", "188"),
+                ("/contact", "4,902", "504"),
+                ("/blog/server-side-tagging", "3,744", "96")]
     bar(40, 430, 1100, 28, NSColor(srgbRed: 0.95, green: 0.96, blue: 0.97, alpha: 1), radius: 4)
-    label("Seite", 56, 437, size: 11, weight: .medium, color: grey)
-    label("Sitzungen", 800, 437, size: 11, weight: .medium, color: grey)
+    label("Page", 56, 437, size: 11, weight: .medium, color: grey)
+    label("Sessions", 800, 437, size: 11, weight: .medium, color: grey)
     label("Conversions", 960, 437, size: 11, weight: .medium, color: grey)
     for (i, row) in rows.enumerated() {
         let y = 392 - CGFloat(i) * 38
@@ -63,9 +63,9 @@ let mockup = renderImage(width: 1180, height: 760) {
     }
 
     // Footer with a contact address, the classic thing you pixelate away
-    label("Rückfragen an", 40, 200, size: 12, color: grey)
-    label("anna.beispiel@musterfirma.example", 40, 170, size: 16, weight: .medium)
-    label("Telefon 089 1234567", 40, 146, size: 13, color: grey)
+    label("Questions to", 40, 200, size: 12, color: grey)
+    label("jane.doe@example.com", 40, 170, size: 16, weight: .medium)
+    label("Phone 555 0100", 40, 146, size: 13, color: grey)
 }!
 
 let doc = Document(image: mockup)
@@ -87,7 +87,7 @@ doc.annotations.append(arrow)
 // Note next to the arrow
 let note = TextAnnotation()
 note.color = kritzelPalette[0]; note.fontSize = 34
-note.text = "Das kann nicht stimmen"
+note.text = "That can't be right"
 note.origin = CGPoint(x: 700, y: 180)
 doc.annotations.append(note)
 
@@ -123,4 +123,4 @@ content.display()
 let rep = content.bitmapImageRepForCachingDisplay(in: content.bounds)!
 content.cacheDisplay(in: content.bounds, to: rep)
 try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[1]))
-print("gerendert:", CommandLine.arguments[1])
+print("rendered:", CommandLine.arguments[1])

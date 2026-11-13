@@ -11,4 +11,4 @@ done
 cp tests/Tests.swift /tmp/kritzel-tests/main.swift
 swiftc -swift-version 5 -target arm64-apple-macos13.0 \
   -o /tmp/kritzel-tests/run /tmp/kritzel-tests/*.swift -framework Cocoa
-/tmp/kritzel-tests/run
+/tmp/kritzel-tests/run "$(pwd)"
